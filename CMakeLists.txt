@@ -10,6 +10,7 @@ include_directories(include third_party/sqlite3)
 
 # Define source files
 set(SOURCES
+        src/main.c
         src/server.c
         src/protocol.c
         src/db.c

@@ -5,6 +5,7 @@
 bool db_init(const char *db_path);
 bool db_serve_init(const char *db_path);
 bool db_add(const char *domain, const char *ipv4);
+bool db_list(void);
 bool db_delete(const char *domain);
 bool db_clear(void);
 bool db_query(const char *domain, char *ipv4_out, int ipv4_max_len);

@@ -12,6 +12,7 @@ void print_usage(const char *prog_name) {
     printf("  %s init                      Initialize the SQLite database\n", prog_name);
     printf("  %s serve <port>              Start the DNS server on the specified UDP port\n", prog_name);
     printf("  %s add <domain> <ipv4>       Add or update an A record\n", prog_name);
+    printf("  %s list                      List all records\n", prog_name);
     printf("  %s delete <domain>           Remove a record\n", prog_name);
     printf("  %s clear                     Remove all records\n", prog_name);
 }
@@ -28,8 +29,8 @@ static int parse_port(const char *port_str) {
     return (int)port;
 }
 
-int main(int argc, char **argv) {
-    const char *err_msg = NULL; 
+int main(const int argc, char **argv) {
+    const char *err_msg;
     const char *db_path = "minidns.db";
 
     if (argc < 2) {
@@ -54,7 +55,7 @@ int main(int argc, char **argv) {
             err_msg = "Error: 'serve' requires exactly one argument: <port>.";
             goto fail;
         }
-        int port = parse_port(argv[2]);
+        const int port = parse_port(argv[2]);
         if (port == -1) {
             err_msg = "Error: Invalid port. Must be an integer between 1 and 65535.";
             goto fail;
@@ -76,7 +77,12 @@ int main(int argc, char **argv) {
             goto fail;
         }
         printf("Record added: %s -> %s\n", argv[2], argv[3]);
-
+    } else if (strcmp(cmd, "list") == 0) {
+        if (argc != 2) {
+            err_msg = "Error: 'list' requires exactly one argument.";
+            goto fail;
+        }
+        if (!db_init(db_path) || db_list()) {}
     } else if (strcmp(cmd, "delete") == 0) {
         if (argc != 3) {
             err_msg = "Error: 'delete' requires exactly one argument: <domain>.";
