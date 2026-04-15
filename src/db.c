@@ -1,0 +1,94 @@
+#include "../include/db.h"
+#include "sqlite3.h"
+#include <stdio.h>
+#include <string.h>
+
+static sqlite3 *db = NULL;
+static sqlite3_stmt *stmt_query = NULL;
+
+bool db_init(const char *db_path) {
+    if (sqlite3_open(db_path, &db) != SQLITE_OK) {
+        fprintf(stderr, "Cannot open database: %s\n", sqlite3_errmsg(db));
+        return false;
+    }
+    
+    // Enable WAL mode for concurrent read/writes
+    sqlite3_exec(db, "PRAGMA journal_mode=WAL;", NULL, NULL, NULL);
+    
+    const char *sql = "CREATE TABLE IF NOT EXISTS records (domain TEXT PRIMARY KEY, ipv4 TEXT);";
+    if (sqlite3_exec(db, sql, NULL, NULL, NULL) != SQLITE_OK) {
+        fprintf(stderr, "Failed to create table: %s\n", sqlite3_errmsg(db));
+        return false;
+    }
+    return true;
+}
+
+bool db_serve_init(const char *db_path) {
+    // Open DB for serving.
+    if (sqlite3_open(db_path, &db) != SQLITE_OK) {
+        fprintf(stderr, "Cannot open database: %s\n", sqlite3_errmsg(db));
+        return false;
+    }
+    
+    // Prepare the SELECT statement once for high performance
+    const char *sql = "SELECT ipv4 FROM records WHERE domain = ?;";
+    if (sqlite3_prepare_v2(db, sql, -1, &stmt_query, NULL) != SQLITE_OK) {
+         fprintf(stderr, "Failed to prepare statement: %s\n", sqlite3_errmsg(db));
+         return false;
+    }
+    return true;
+}
+
+bool db_add(const char *domain, const char *ipv4) {
+    sqlite3_stmt *stmt;
+    // UPSERT: Insert or update if exists
+    const char *sql = "INSERT INTO records (domain, ipv4) VALUES (?, ?) "
+                      "ON CONFLICT(domain) DO UPDATE SET ipv4=excluded.ipv4;";
+    if (sqlite3_prepare_v2(db, sql, -1, &stmt, NULL) != SQLITE_OK) return false;
+    
+    sqlite3_bind_text(stmt, 1, domain, -1, SQLITE_STATIC);
+    sqlite3_bind_text(stmt, 2, ipv4, -1, SQLITE_STATIC);
+    
+    bool success = (sqlite3_step(stmt) == SQLITE_DONE);
+    sqlite3_finalize(stmt);
+    return success;
+}
+
+bool db_delete(const char *domain) {
+    sqlite3_stmt *stmt;
+    const char *sql = "DELETE FROM records WHERE domain = ?;";
+    if (sqlite3_prepare_v2(db, sql, -1, &stmt, NULL) != SQLITE_OK) return false;
+    
+    sqlite3_bind_text(stmt, 1, domain, -1, SQLITE_STATIC);
+    bool success = (sqlite3_step(stmt) == SQLITE_DONE);
+    sqlite3_finalize(stmt);
+    return success;
+}
+
+bool db_clear(void) {
+    const char *sql = "DELETE FROM records;";
+    return sqlite3_exec(db, sql, NULL, NULL, NULL) == SQLITE_OK;
+}
+
+bool db_query(const char *domain, char *ipv4_out, int ipv4_max_len) {
+    if (!stmt_query) return false;
+    
+    sqlite3_bind_text(stmt_query, 1, domain, -1, SQLITE_STATIC);
+    bool found = false;
+    
+    if (sqlite3_step(stmt_query) == SQLITE_ROW) {
+        const unsigned char *text = sqlite3_column_text(stmt_query, 0);
+        if (text) {
+            strncpy_s(ipv4_out, sizeof(ipv4_out), (const char *)text, _TRUNCATE);
+            found = true;
+        }
+    }
+    
+    sqlite3_reset(stmt_query);
+    return found;
+}
+
+void db_close(void) {
+    if (stmt_query) sqlite3_finalize(stmt_query);
+    if (db) sqlite3_close(db);
+}
