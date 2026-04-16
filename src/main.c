@@ -7,9 +7,9 @@
 #include <arpa/inet.h>
 #endif
 
-#include "types.h"
 #include "db.h"
 #include "server.h"
+#include "types.h"
 
 #include <errno.h>
 #include <limits.h>

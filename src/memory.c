@@ -4,15 +4,17 @@
 #define ALIGNMENT 8
 #define ALIGN_UP(n, a) (((n) + (a) - 1) & ~((a) - 1))
 
-void arena_init(Arena* arena, void* buffer, size_t size) {
+void arena_init(Arena* arena, void* buffer, size_t size)
+{
     arena->buffer = (uint8_t*)buffer;
     arena->size = size;
     arena->offset = 0;
 }
 
-void* arena_alloc(Arena* arena, size_t size) {
+void* arena_alloc(Arena* arena, size_t size)
+{
     size_t aligned_size = ALIGN_UP(size, ALIGNMENT);
-    
+
     if (arena->offset + aligned_size > arena->size) {
         return NULL; // OOM
     }
@@ -22,6 +24,7 @@ void* arena_alloc(Arena* arena, size_t size) {
     return ptr;
 }
 
-void arena_reset(Arena* arena) {
+void arena_reset(Arena* arena)
+{
     arena->offset = 0;
 }

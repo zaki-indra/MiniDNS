@@ -1,9 +1,9 @@
 #include "server.h"
 
+#include "cache.h"
+#include "dispatcher.h"
 #include "memory.h"
 #include "parser.h"
-#include "dispatcher.h"
-#include "cache.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -21,7 +21,7 @@ typedef int socklen_t;
 #endif
 
 #define BUFFER_SIZE 512
-#define ARENA_SIZE  4096
+#define ARENA_SIZE 4096
 
 void server_start(int port)
 {
@@ -51,8 +51,10 @@ void server_start(int port)
 
     if (bind(sockfd, (const struct sockaddr*)&server_addr,
              sizeof(server_addr)) < 0) {
-        fprintf(stderr, "Bind failed. Note: Binding to Port %d usually "
-                        "requires Admin/Root privileges.\n", port);
+        fprintf(stderr,
+                "Bind failed. Note: Binding to Port %d usually "
+                "requires Admin/Root privileges.\n",
+                port);
         closesocket(sockfd);
         return;
     }
@@ -80,7 +82,7 @@ void server_start(int port)
         DNSRequest req;
         if (dns_parse_request(buffer, n, &req, &arena)) {
             DNSResponse resp;
-            
+
             // Dispatch to the application logic
             dispatcher_handle(&req, &resp, &arena);
 

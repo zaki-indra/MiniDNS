@@ -7,8 +7,8 @@
 #include <arpa/inet.h>
 #endif
 
-#include "types.h"
 #include "sqlite3.h"
+#include "types.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -64,7 +64,7 @@ bool db_list(void)
     }
 
     printf("DNS Records:\n");
-    
+
     IPv4Address ip;
     char buffer[INET_ADDRSTRLEN];
     while (sqlite3_step(stmt) == SQLITE_ROW) {

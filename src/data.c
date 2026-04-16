@@ -1,17 +1,22 @@
 #include "data.h"
+
 #include "cache.h"
 #include "db.h"
+
 #include <stdio.h>
 
-bool data_query_a_records(const char* domain, IPv4Address** ips_out, size_t* count_out, Arena* arena) {
+bool data_query_a_records(const char* domain, IPv4Address** ips_out,
+                          size_t* count_out, Arena* arena)
+{
     if (!domain || !ips_out || !count_out || !arena) {
         return false;
     }
 
-    // Allocate memory for at least 1 IP for now. 
+    // Allocate memory for at least 1 IP for now.
     // Once DB supports multiple IPs, this might vary.
     IPv4Address* ip = (IPv4Address*)arena_alloc(arena, sizeof(IPv4Address));
-    if (!ip) return false;
+    if (!ip)
+        return false;
 
     if (cache_get(domain, ip)) {
         *ips_out = ip;
