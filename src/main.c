@@ -7,7 +7,7 @@
 #include <arpa/inet.h>
 #endif
 
-#include "core.h"
+#include "types.h"
 #include "db.h"
 #include "server.h"
 

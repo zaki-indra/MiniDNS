@@ -2,7 +2,7 @@
 
 #include <stdbool.h>
 
-#include "core.h"
+#include "types.h"
 
 bool db_init(const char *db_path);
 bool db_serve_init(const char *db_path);

@@ -1,8 +1,9 @@
 #include "server.h"
 
+#include "memory.h"
+#include "parser.h"
+#include "dispatcher.h"
 #include "cache.h"
-#include "db.h"
-#include "protocol.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -19,41 +20,8 @@ typedef int socklen_t;
 #define closesocket close
 #endif
 
-#define BUFFER_SIZE 512 // Standard max size for DNS UDP packets
-
-void process_dns_request(SOCKET sockfd, uint8_t* buffer, int n,
-                     struct sockaddr_in client_addr, socklen_t len)
-{
-
-    char domain[256];
-    int query_end = protocol_parse_request(buffer, n, domain, sizeof(domain));
-
-    if (query_end > 0) {
-        IPv4Address ipv4;
-
-        char outbuf[INET_ADDRSTRLEN];
-
-        // 1. Try Memory Cache
-        if (cache_get(domain, &ipv4)) {
-            inet_ntop(AF_INET, ipv4.bytes, outbuf, sizeof(outbuf));
-            printf("Query: %s -> %s (Cache Hit)\n", domain, outbuf);
-        } else {
-            // 2. Fallback to SQLite DB
-            if (db_query(domain, &ipv4)) {
-                cache_set(domain, &ipv4);
-                inet_ntop(AF_INET, ipv4.bytes, outbuf, sizeof(outbuf));
-                printf("Query: %s -> %s (DB Hit)\n", domain, outbuf);
-            } else {
-                // 3. Not found, trigger NXDOMAIN
-                printf("Query: %s -> NXDOMAIN\n", domain);
-            }
-        }
-
-        size_t resp_len = protocol_build_response(buffer, query_end, &ipv4);
-        sendto(sockfd, (const char*)buffer, (int)resp_len, 0,
-               (const struct sockaddr*)&client_addr, len);
-    }
-}
+#define BUFFER_SIZE 512
+#define ARENA_SIZE  4096
 
 void server_start(int port)
 {
@@ -92,7 +60,13 @@ void server_start(int port)
     cache_init();
 
     uint8_t buffer[BUFFER_SIZE];
+    uint8_t arena_buffer[ARENA_SIZE];
+    Arena arena;
+    arena_init(&arena, arena_buffer, ARENA_SIZE);
+
     socklen_t len = sizeof(client_addr);
+
+    printf("Server listening on port %d...\n", port);
 
     while (1) {
         int n = recvfrom(sockfd, (char*)buffer, BUFFER_SIZE, 0,
@@ -100,7 +74,23 @@ void server_start(int port)
         if (n < 0)
             continue;
 
-        process_dns_request(sockfd, buffer, n, client_addr, len);
+        // Automatically clean up memory from previous request
+        arena_reset(&arena);
+
+        DNSRequest req;
+        if (dns_parse_request(buffer, n, &req, &arena)) {
+            DNSResponse resp;
+            
+            // Dispatch to the application logic
+            dispatcher_handle(&req, &resp, &arena);
+
+            // Format back to binary
+            size_t out_len = dns_format_response(&resp, buffer, BUFFER_SIZE);
+            if (out_len > 0) {
+                sendto(sockfd, (const char*)buffer, (int)out_len, 0,
+                       (const struct sockaddr*)&client_addr, len);
+            }
+        }
     }
 
     closesocket(sockfd);

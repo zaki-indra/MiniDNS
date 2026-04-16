@@ -1,6 +1,6 @@
 #include "cache.h"
 
-#include "core.h"
+#include "types.h"
 
 #include <stdio.h>
 #include <string.h>
