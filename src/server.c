@@ -21,6 +21,40 @@ typedef int socklen_t;
 
 #define BUFFER_SIZE 512 // Standard max size for DNS UDP packets
 
+void process_dns_request(SOCKET sockfd, uint8_t* buffer, int n,
+                     struct sockaddr_in client_addr, socklen_t len)
+{
+
+    char domain[256];
+    int query_end = protocol_parse_request(buffer, n, domain, sizeof(domain));
+
+    if (query_end > 0) {
+        IPv4Address ipv4;
+
+        char outbuf[INET_ADDRSTRLEN];
+
+        // 1. Try Memory Cache
+        if (cache_get(domain, &ipv4)) {
+            inet_ntop(AF_INET, ipv4.bytes, outbuf, sizeof(outbuf));
+            printf("Query: %s -> %s (Cache Hit)\n", domain, outbuf);
+        } else {
+            // 2. Fallback to SQLite DB
+            if (db_query(domain, &ipv4)) {
+                cache_set(domain, &ipv4);
+                inet_ntop(AF_INET, ipv4.bytes, outbuf, sizeof(outbuf));
+                printf("Query: %s -> %s (DB Hit)\n", domain, outbuf);
+            } else {
+                // 3. Not found, trigger NXDOMAIN
+                printf("Query: %s -> NXDOMAIN\n", domain);
+            }
+        }
+
+        size_t resp_len = protocol_build_response(buffer, query_end, &ipv4);
+        sendto(sockfd, (const char*)buffer, (int)resp_len, 0,
+               (const struct sockaddr*)&client_addr, len);
+    }
+}
+
 void server_start(int port)
 {
 #ifdef _WIN32
@@ -49,8 +83,8 @@ void server_start(int port)
 
     if (bind(sockfd, (const struct sockaddr*)&server_addr,
              sizeof(server_addr)) < 0) {
-        fprintf(stderr, "Bind failed. Note: Binding to Port 53 usually "
-                        "requires Admin/Root privileges.\n");
+        fprintf(stderr, "Bind failed. Note: Binding to Port %d usually "
+                        "requires Admin/Root privileges.\n", port);
         closesocket(sockfd);
         return;
     }
@@ -66,36 +100,7 @@ void server_start(int port)
         if (n < 0)
             continue;
 
-        char domain[256];
-        int query_end =
-            protocol_parse_request(buffer, n, domain, sizeof(domain));
-
-        if (query_end > 0) {
-            IPv4Address ipv4;
-
-            char outbuf[INET_ADDRSTRLEN];
-
-            // 1. Try Memory Cache
-            if (cache_get(domain, &ipv4)) {
-                inet_ntop(AF_INET, ipv4.bytes, outbuf, sizeof(outbuf));
-                printf("Query: %s -> %s (Cache Hit)\n", domain, outbuf);
-            } else {
-                // 2. Fallback to SQLite DB
-                if (db_query(domain, &ipv4)) {
-                    cache_set(domain, &ipv4);
-                    inet_ntop(AF_INET, ipv4.bytes, outbuf, sizeof(outbuf));
-                    printf("Query: %s -> %s (DB Hit)\n", domain, outbuf);
-                } else {
-                    // 3. Not found, trigger NXDOMAIN
-                    printf("Query: %s -> NXDOMAIN\n", domain);
-                }
-            }
-
-            size_t resp_len =
-                protocol_build_response(buffer, query_end, &ipv4);
-            sendto(sockfd, (const char*)buffer, (int)resp_len, 0,
-                   (const struct sockaddr*)&client_addr, len);
-        }
+        process_dns_request(sockfd, buffer, n, client_addr, len);
     }
 
     closesocket(sockfd);
