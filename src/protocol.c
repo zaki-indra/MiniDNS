@@ -1,4 +1,5 @@
-#include "../include/protocol.h"
+#include "protocol.h"
+
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -8,6 +9,8 @@
 #else
 #include <arpa/inet.h>
 #endif
+
+#include "core.h"
 
 int protocol_parse_request(const uint8_t *buffer, size_t size, char *domain_out, size_t domain_max_len) {
     if (size < 12) return -1; // Too small to be a DNS header
@@ -54,11 +57,11 @@ int protocol_parse_request(const uint8_t *buffer, size_t size, char *domain_out,
     return (int)offset;
 }
 
-size_t protocol_build_response(uint8_t *buffer, size_t query_end_offset, const char *ipv4_str) {
+size_t protocol_build_response(uint8_t *buffer, size_t query_end_offset, const IPv4Address *ipv4) {
     // Modify Header Flags
     buffer[2] = (buffer[2] & 0x7F) | 0x80; // Set QR (Response)
     
-    if (ipv4_str == NULL) {
+    if (ipv4 == NULL) {
         // NXDOMAIN: Non-Existent Domain
         buffer[3] = (buffer[3] & 0x80) | 0x03; // RCODE 3
 
@@ -105,8 +108,7 @@ size_t protocol_build_response(uint8_t *buffer, size_t query_end_offset, const c
     buffer[offset++] = 0x04;
     
     // RDATA (IPv4 Address)
-    uint32_t ip = inet_addr(ipv4_str); // inet_addr already returns Network Byte Order
-    memcpy(&buffer[offset], &ip, 4);
+    memcpy(&buffer[offset], (void *)ipv4, 4);
     offset += 4;
     
     return offset;

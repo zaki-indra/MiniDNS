@@ -1,46 +1,62 @@
+// main.c
+
+#ifdef _WIN32
+#include <winsock2.h>
+#include <ws2tcpip.h>
+#else
 #include <arpa/inet.h>
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
-#include <errno.h>
-#include <limits.h>
+#endif
 
 #include "core.h"
 #include "db.h"
 #include "server.h"
 
-void print_usage(const char *prog_name) {
+#include <errno.h>
+#include <limits.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+void print_usage(const char* prog_name)
+{
     printf("MiniDNS - A minimal, performant DNS server in C\n\n");
     printf("Usage:\n");
-    printf("  %s init                      Initialize the SQLite database\n", prog_name);
-    printf("  %s serve <port>              Start the DNS server on the specified UDP port\n", prog_name);
-    printf("  %s add <domain> <ipv4>       Add or update an A record\n", prog_name);
+    printf("  %s init                      Initialize the SQLite database\n",
+           prog_name);
+    printf(
+        "  %s serve <port>              Start the DNS server on the specified "
+        "UDP port\n",
+        prog_name);
+    printf("  %s add <domain> <ipv4>       Add or update an A record\n",
+           prog_name);
     printf("  %s list                      List all records\n", prog_name);
     printf("  %s delete <domain>           Remove a record\n", prog_name);
     printf("  %s clear                     Remove all records\n", prog_name);
 }
 
-static int parse_port(const char *port_str) {
-    char *endptr;
+static int parse_port(const char* port_str)
+{
+    char* endptr;
     errno = 0;
     long port = strtol(port_str, &endptr, 10);
 
-    // Safely converts the string to an integer, catches trailing garbage characters (e.g., 53abc), and enforces the 1–65535 boundary condition[cite: 19].
-    if (port_str == endptr || *endptr != '\0' || errno != 0 || port < 1 || port > 65535) {
+    if (port_str == endptr || *endptr != '\0' || errno != 0 || port < 1 ||
+        port > 65535) {
         return -1;
     }
-    return (int) port;
+    return (int)port;
 }
 
-int main(const int argc, char **argv) {
-    const char *err_msg;
-    const char *db_path = "minidns.db";
+int main(const int argc, char** argv)
+{
+    const char* err_msg;
+    const char* db_path = "minidns.db";
 
     if (argc < 2) {
         goto help_and_fail;
     }
 
-    const char *cmd = argv[1];
+    const char* cmd = argv[1];
 
     if (strcmp(cmd, "init") == 0) {
         if (argc != 2) {
@@ -59,7 +75,8 @@ int main(const int argc, char **argv) {
         }
         const int port = parse_port(argv[2]);
         if (port == -1) {
-            err_msg = "Error: Invalid port. Must be an integer between 1 and 65535.";
+            err_msg =
+                "Error: Invalid port. Must be an integer between 1 and 65535.";
             goto fail;
         }
         if (!db_serve_init(db_path)) {
@@ -70,7 +87,8 @@ int main(const int argc, char **argv) {
         server_start(port);
     } else if (strcmp(cmd, "add") == 0) {
         if (argc != 4) {
-            err_msg = "Error: 'add' requires exactly two arguments: <domain> <ipv4>.";
+            err_msg =
+                "Error: 'add' requires exactly two arguments: <domain> <ipv4>.";
             goto fail;
         }
         IPv4Address ipv4;
@@ -92,7 +110,8 @@ int main(const int argc, char **argv) {
         }
     } else if (strcmp(cmd, "delete") == 0) {
         if (argc != 3) {
-            err_msg = "Error: 'delete' requires exactly one argument: <domain>.";
+            err_msg =
+                "Error: 'delete' requires exactly one argument: <domain>.";
             goto fail;
         }
         if (!db_init(db_path) || !db_delete(argv[2])) {
