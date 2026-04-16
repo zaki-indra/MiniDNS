@@ -1,9 +1,12 @@
+#include <arpa/inet.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 #include <errno.h>
 #include <limits.h>
-#include "../include/db.h"
+
+#include "core.h"
+#include "db.h"
 #include "server.h"
 
 void print_usage(const char *prog_name) {
@@ -19,14 +22,14 @@ void print_usage(const char *prog_name) {
 
 static int parse_port(const char *port_str) {
     char *endptr;
-    errno = 0; 
+    errno = 0;
     long port = strtol(port_str, &endptr, 10);
 
     // Safely converts the string to an integer, catches trailing garbage characters (e.g., 53abc), and enforces the 1–65535 boundary condition[cite: 19].
     if (port_str == endptr || *endptr != '\0' || errno != 0 || port < 1 || port > 65535) {
-        return -1; 
+        return -1;
     }
-    return (int)port;
+    return (int) port;
 }
 
 int main(const int argc, char **argv) {
@@ -49,7 +52,6 @@ int main(const int argc, char **argv) {
             goto fail;
         }
         printf("Database initialized successfully at '%s'.\n", db_path);
-        
     } else if (strcmp(cmd, "serve") == 0) {
         if (argc != 3) {
             err_msg = "Error: 'serve' requires exactly one argument: <port>.";
@@ -66,13 +68,17 @@ int main(const int argc, char **argv) {
         }
         printf("Starting MiniDNS server on port %d...\n", port);
         server_start(port);
-
     } else if (strcmp(cmd, "add") == 0) {
         if (argc != 4) {
             err_msg = "Error: 'add' requires exactly two arguments: <domain> <ipv4>.";
             goto fail;
         }
-        if (!db_init(db_path) || !db_add(argv[2], argv[3])) {
+        IPv4Address ipv4;
+        if (!inet_pton(AF_INET, argv[3], ipv4.bytes)) {
+            err_msg = "Error: Invalid IPv4 address.";
+            goto fail;
+        }
+        if (!db_init(db_path) || !db_add(argv[2], &ipv4)) {
             err_msg = "Error: Failed to add record.";
             goto fail;
         }
@@ -82,7 +88,8 @@ int main(const int argc, char **argv) {
             err_msg = "Error: 'list' requires exactly one argument.";
             goto fail;
         }
-        if (!db_init(db_path) || db_list()) {}
+        if (!db_init(db_path) || db_list()) {
+        }
     } else if (strcmp(cmd, "delete") == 0) {
         if (argc != 3) {
             err_msg = "Error: 'delete' requires exactly one argument: <domain>.";
@@ -93,7 +100,6 @@ int main(const int argc, char **argv) {
             goto fail;
         }
         printf("Record deleted: %s\n", argv[2]);
-
     } else if (strcmp(cmd, "clear") == 0) {
         if (argc != 2) {
             err_msg = "Error: 'clear' does not take additional arguments.";
@@ -104,7 +110,6 @@ int main(const int argc, char **argv) {
             goto fail;
         }
         printf("All records cleared.\n");
-
     } else {
         fprintf(stderr, "Error: Unknown command '%s'.\n\n", cmd);
         goto help_and_fail;
