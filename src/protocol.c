@@ -56,11 +56,15 @@ int protocol_parse_request(const uint8_t *buffer, size_t size, char *domain_out,
 
 size_t protocol_build_response(uint8_t *buffer, size_t query_end_offset, const char *ipv4_str) {
     // Modify Header Flags
-    buffer[2] |= 0x80; // Set QR (Response)
+    buffer[2] = (buffer[2] & 0x7F) | 0x80; // Set QR (Response)
     
     if (ipv4_str == NULL) {
         // NXDOMAIN: Non-Existent Domain
-        buffer[3] = (buffer[3] & 0xF0) | 0x03; // RCODE 3 
+        buffer[3] = (buffer[3] & 0x80) | 0x03; // RCODE 3
+
+        // Set ARCOUNT (Additional records count) to 0
+        buffer[10] = 0x00;
+        buffer[11] = 0x00;
         return query_end_offset; // Return packet with header + question only
     }
     
@@ -70,7 +74,11 @@ size_t protocol_build_response(uint8_t *buffer, size_t query_end_offset, const c
     // Set ANCOUNT (Answer count) to 1
     buffer[6] = 0x00;
     buffer[7] = 0x01;
-    
+
+    // Set ARCOUNT (Additional records count) to 0
+    buffer[10] = 0x00;
+    buffer[11] = 0x00;
+
     size_t offset = query_end_offset;
     
     // --- Answer Section ---
