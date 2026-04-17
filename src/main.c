@@ -92,7 +92,7 @@ int main(const int argc, char** argv)
             goto fail;
         }
         IPv4Address ipv4;
-        if (!inet_pton(AF_INET, argv[3], ipv4.bytes)) {
+        if (!inet_pton(AF_INET, argv[3], ipv4.octets)) {
             err_msg = "Error: Invalid IPv4 address.";
             goto fail;
         }

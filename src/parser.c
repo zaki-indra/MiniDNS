@@ -154,10 +154,10 @@ size_t dns_format_response(const DNS* dns, uint8_t* out_buf, size_t max_len)
         out_buf[offset++] = 0x04;
 
         // RDATA
-        out_buf[offset++] = dns->answers[a].bytes[0];
-        out_buf[offset++] = dns->answers[a].bytes[1];
-        out_buf[offset++] = dns->answers[a].bytes[2];
-        out_buf[offset++] = dns->answers[a].bytes[3];
+        out_buf[offset++] = dns->answers[a].octets[0];
+        out_buf[offset++] = dns->answers[a].octets[1];
+        out_buf[offset++] = dns->answers[a].octets[2];
+        out_buf[offset++] = dns->answers[a].octets[3];
     }
 
     return offset;
