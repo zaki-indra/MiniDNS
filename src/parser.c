@@ -24,35 +24,48 @@ bool dns_parse_request(const uint8_t* in_buf, size_t in_len, DNS* out_dns,
         return false;
 
     size_t offset = 12;
-    size_t domain_len = 0;
-    char domain_out[256];
 
-    while (offset < in_len) {
-        uint8_t len = in_buf[offset++];
-        if (len == 0)
-            break;
-        if (offset + len > in_len)
-            return false;
+    out_dns->questions = (DNSQuestion*)arena_alloc(
+        arena, out_dns->qdcount * sizeof(DNSQuestion));
 
-        if (domain_len > 0 && domain_len < sizeof(domain_out) - 1) {
-            domain_out[domain_len++] = '.';
-        }
-        for (int i = 0; i < len; i++) {
-            if (domain_len < sizeof(domain_out) - 1) {
-                domain_out[domain_len++] = in_buf[offset++];
-            } else {
-                offset++;
+    // Loop questions
+    for (size_t q = 0; q < out_dns->qdcount; q++) {
+        size_t domain_len = 0;
+        char domain_out[256];
+        while (offset < in_len) {
+            uint8_t len = in_buf[offset++];
+            if (len == 0) {
+                goto outer;
+            }
+            if (offset + len > in_len)
+                return false;
+
+            if (domain_len > 0 && domain_len < sizeof(domain_out) - 1) {
+                domain_out[domain_len++] = '.';
+            }
+
+            for (int i = 0; i < len; i++) {
+                if (domain_len < sizeof(domain_out) - 1) {
+                    domain_out[domain_len++] = in_buf[offset++];
+                } else {
+                    offset++;
+                }
             }
         }
-    }
-    domain_out[domain_len] = '\0';
-    snprintf(out_dns->question.qname, sizeof(out_dns->question.qname), "%s",
-             domain_out);
+    outer:
+        domain_out[domain_len] = '\0';
+        snprintf(out_dns->questions[q].qname,
+                 sizeof(out_dns->questions[q].qname), "%s", domain_out);
 
-    if (offset + 4 > in_len)
-        return false;
-    out_dns->question.qtype = (in_buf[offset] << 8) | in_buf[offset + 1];
-    out_dns->question.qclass = (in_buf[offset + 2] << 8) | in_buf[offset + 3];
+        if (offset + 4 > in_len)
+            return false;
+        out_dns->questions[q].qtype =
+            (in_buf[offset] << 8) | in_buf[offset + 1];
+        out_dns->questions[q].qclass =
+            (in_buf[offset + 2] << 8) | in_buf[offset + 3];
+
+        offset += 4;
+    }
 
     return true;
 }
@@ -91,7 +104,7 @@ size_t dns_format_response(const DNS* dns, uint8_t* out_buf, size_t max_len)
 
     size_t offset = 12;
 
-    const char* name = dns->question.qname;
+    const char* name = dns->questions[0].qname;
     const char* start = name;
     const char* dot = strchr(start, '.');
     while (dot != NULL) {
@@ -119,10 +132,10 @@ size_t dns_format_response(const DNS* dns, uint8_t* out_buf, size_t max_len)
 
     if (offset + 4 > max_len)
         return 0;
-    out_buf[offset++] = (dns->question.qtype >> 8) & 0xFF;
-    out_buf[offset++] = dns->question.qtype & 0xFF;
-    out_buf[offset++] = (dns->question.qclass >> 8) & 0xFF;
-    out_buf[offset++] = dns->question.qclass & 0xFF;
+    out_buf[offset++] = (dns->questions[0].qtype >> 8) & 0xFF;
+    out_buf[offset++] = dns->questions[0].qtype & 0xFF;
+    out_buf[offset++] = (dns->questions[0].qclass >> 8) & 0xFF;
+    out_buf[offset++] = dns->questions[0].qclass & 0xFF;
 
     // Write Answers
     for (size_t a = 0; a < dns->ancount; a++) {

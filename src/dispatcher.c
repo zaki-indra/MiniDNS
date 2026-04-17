@@ -33,11 +33,11 @@ void dispatcher_handle(DNS* dns, Arena* arena)
     }
 
     if (dns->qdcount > 0) {
-        if (get_qtype(dns->question.qtype) == QTYPE_A) {
+        if (get_qtype(dns->questions[0].qtype) == QTYPE_A) {
             size_t count = 0;
             IPv4Address* ips = nullptr;
 
-            if (data_query_a_records(dns->question.qname, &ips, &count,
+            if (data_query_a_records(dns->questions[0].qname, &ips, &count,
                                      arena)) {
                 flags_set_rcode(&dns->flags, RCODE_NOERROR);
                 dns->answers = ips;

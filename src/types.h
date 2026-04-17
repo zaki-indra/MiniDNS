@@ -93,7 +93,7 @@ typedef struct {
     uint16_t nscount;
     uint16_t arcount;
 
-    DNSQuestion question;
+    DNSQuestion* questions;
 
     IPv4Address* answers;
 
