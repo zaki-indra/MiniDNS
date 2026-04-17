@@ -70,10 +70,19 @@ typedef enum {
 } qtype_t;
 
 typedef struct {
-    char domain[256];
+    char qname[256];
     uint16_t qtype;
     uint16_t qclass;
 } DNSQuestion;
+
+typedef struct {
+    char name[256];
+    uint16_t type;
+    uint16_t class;
+    uint32_t ttl;
+    uint16_t rdlength;
+    uint8_t rdata[256];
+} ResourceRecord;
 
 typedef struct {
     // Header
@@ -85,6 +94,10 @@ typedef struct {
     uint16_t arcount;
 
     DNSQuestion question;
+
+    ResourceRecord* answers;
+    ResourceRecord* authorities;
+    ResourceRecord* additional;
 } DNSRequest;
 
 typedef struct {
@@ -99,6 +112,9 @@ typedef struct {
     DNSQuestion question;
 
     IPv4Address* answers;
+    // ResourceRecord* answers;
+    ResourceRecord* authorities;
+    ResourceRecord* additional;
 } DNSResponse;
 
 qr_t flags_get_qr(uint16_t flags);

@@ -51,7 +51,7 @@ bool dns_parse_request(const uint8_t* in_buf, size_t in_len,
         }
     }
     domain_out[domain_len] = '\0';
-    snprintf(out_req->question.domain, sizeof(out_req->question.domain), "%s",
+    snprintf(out_req->question.qname, sizeof(out_req->question.qname), "%s",
              domain_out);
 
     if (offset + 4 > in_len)
@@ -97,8 +97,8 @@ size_t dns_format_response(const DNSResponse* resp, uint8_t* out_buf,
 
     size_t offset = 12;
 
-    const char* dom = resp->question.domain;
-    const char* start = dom;
+    const char* name = resp->question.qname;
+    const char* start = name;
     const char* dot = strchr(start, '.');
     while (dot != NULL) {
         size_t len = dot - start;

@@ -31,7 +31,7 @@ void dispatcher_handle(const DNSRequest* req, DNSResponse* resp, Arena* arena)
             size_t count = 0;
             IPv4Address* ips = NULL;
 
-            if (data_query_a_records(req->question.domain, &ips, &count,
+            if (data_query_a_records(req->question.qname, &ips, &count,
                                      arena)) {
                 flags_set_rcode(&resp->flags, RCODE_NOERROR);
                 resp->answers = ips;
