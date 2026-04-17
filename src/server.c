@@ -79,15 +79,11 @@ void server_start(int port)
         // Automatically clean up memory from previous request
         arena_reset(&arena);
 
-        DNSRequest req;
-        if (dns_parse_request(buffer, n, &req, &arena)) {
-            DNSResponse resp;
+        DNS dns;
+        if (dns_parse_request(buffer, n, &dns, &arena)) {
+            dispatcher_handle(&dns, &arena);
 
-            // Dispatch to the application logic
-            dispatcher_handle(&req, &resp, &arena);
-
-            // Format back to binary
-            size_t out_len = dns_format_response(&resp, buffer, BUFFER_SIZE);
+            size_t out_len = dns_format_response(&dns, buffer, BUFFER_SIZE);
             if (out_len > 0) {
                 sendto(sockfd, (const char*)buffer, (int)out_len, 0,
                        (const struct sockaddr*)&client_addr, len);

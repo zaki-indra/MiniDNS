@@ -3,12 +3,11 @@
 #include "memory.h"
 #include "types.h"
 
-// Parses the raw UDP packet into a structured DNSRequest.
+// Parses the raw UDP packet into a structured DNS.
 // Returns false if the request is invalid or malformed.
-bool dns_parse_request(const uint8_t* in_buf, size_t in_len,
-                       DNSRequest* out_req, Arena* arena);
+bool dns_parse_request(const uint8_t* in_buf, size_t in_len, DNS* out_dns,
+                       Arena* arena);
 
 // Formats a DNSResponse object into a raw binary buffer for transmission.
 // Returns the size of the formatted packet, or 0 on failure.
-size_t dns_format_response(const DNSResponse* resp, uint8_t* out_buf,
-                           size_t max_len);
+size_t dns_format_response(const DNS* dns, uint8_t* out_buf, size_t max_len);

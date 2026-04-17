@@ -2,43 +2,53 @@
 
 #include "data.h"
 
-void dispatcher_handle(const DNSRequest* req, DNSResponse* resp, Arena* arena)
+void dispatcher_handle(DNS* dns, Arena* arena)
 {
-    // Basic setup for response
-    resp->id = req->id;
-    resp->question = req->question;
-    resp->answers = NULL;
-    resp->qdcount = req->qdcount;
-    resp->ancount = 0;
-    resp->nscount = 0;
-    resp->arcount = req->arcount;
 
-    // Extract request flags
-    opcode_t opcode = flags_get_opcode(req->flags);
-    rd_t rd = flags_get_rd(req->flags);
+    // Extract header
+    uint16_t id = dns->id;
+    uint16_t flags = dns->flags;
+    uint16_t qdcount = dns->qdcount;
+    uint16_t ancount = dns->ancount;
+    uint16_t nscount = dns->nscount;
+    uint16_t arcount = dns->arcount;
+
+    qr_t qr = flags_get_qr(flags);
+    opcode_t opcode = flags_get_opcode(flags);
+    rd_t rd = flags_get_rd(flags);
+    aa_t aa = flags_get_aa(flags);
+    tc_t tc = flags_get_tc(flags);
+    ra_t ra = flags_get_ra(flags);
 
     // Set default response flags
-    flags_set_qr(&resp->flags, QR_RESPONSE);
-    flags_set_opcode(&resp->flags, opcode);
-    flags_set_aa(&resp->flags, AA_NO);
-    flags_set_tc(&resp->flags, TC_NO);
-    flags_set_rd(&resp->flags, rd);
-    flags_set_ra(&resp->flags, RA_NO);
-    flags_set_rcode(&resp->flags, RCODE_NXDOMAIN);
+    flags_set_qr(&dns->flags, QR_RESPONSE);
+    flags_set_aa(&dns->flags, AA_NO);
+    flags_set_tc(&dns->flags, TC_NO);
+    flags_set_rd(&dns->flags, rd);
+    flags_set_ra(&dns->flags, RA_NO);
 
-    if (req->qdcount > 0) {
-        if (get_qtype(req->question.qtype) == QTYPE_A) {
+    if (qr == QR_RESPONSE) {
+        flags_set_rcode(&dns->flags, RCODE_FORMERR);
+        return;
+    }
+
+    if (dns->qdcount > 0) {
+        if (get_qtype(dns->question.qtype) == QTYPE_A) {
             size_t count = 0;
-            IPv4Address* ips = NULL;
+            IPv4Address* ips = nullptr;
 
-            if (data_query_a_records(req->question.qname, &ips, &count,
+            if (data_query_a_records(dns->question.qname, &ips, &count,
                                      arena)) {
-                flags_set_rcode(&resp->flags, RCODE_NOERROR);
-                resp->answers = ips;
-                resp->ancount = count;
+                flags_set_rcode(&dns->flags, RCODE_NOERROR);
+                dns->answers = ips;
+                dns->ancount = count;
+            } else {
+                flags_set_rcode(&dns->flags, RCODE_NXDOMAIN);
+                dns->answers = nullptr;
+                dns->ancount = 0;
             }
         } else {
-            flags_set_rcode(&resp->flags, RCODE_NOTIMP);
+            flags_set_rcode(&dns->flags, RCODE_NOTIMP);
         }
     }
 }

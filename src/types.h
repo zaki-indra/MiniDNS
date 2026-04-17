@@ -95,27 +95,11 @@ typedef struct {
 
     DNSQuestion question;
 
-    ResourceRecord* answers;
-    ResourceRecord* authorities;
-    ResourceRecord* additional;
-} DNSRequest;
-
-typedef struct {
-    // Header
-    uint16_t id;
-    uint16_t flags;
-    uint16_t qdcount;
-    uint16_t ancount;
-    uint16_t nscount;
-    uint16_t arcount;
-
-    DNSQuestion question;
-
     IPv4Address* answers;
-    // ResourceRecord* answers;
+
     ResourceRecord* authorities;
     ResourceRecord* additional;
-} DNSResponse;
+} DNS;
 
 qr_t flags_get_qr(uint16_t flags);
 opcode_t flags_get_opcode(uint16_t flags);
