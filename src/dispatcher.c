@@ -7,28 +7,38 @@ void dispatcher_handle(const DNSRequest* req, DNSResponse* resp, Arena* arena)
     // Basic setup for response
     resp->id = req->id;
     resp->question = req->question;
-
-    // Default to Name Error (NXDOMAIN)
-    resp->rcode = 3;
     resp->answers = NULL;
-    resp->answer_count = 0;
+    resp->qdcount = req->qdcount;
+    resp->ancount = 0;
+    resp->nscount = 0;
+    resp->arcount = req->arcount;
 
-    if (req->q_count > 0) {
-        // Supported QTYPE: Type A = 1
-        if (req->question.qtype == 1) {
+    // Extract request flags
+    opcode_t opcode = flags_get_opcode(req->flags);
+    rd_t rd = flags_get_rd(req->flags);
+
+    // Set default response flags
+    flags_set_qr(&resp->flags, QR_RESPONSE);
+    flags_set_opcode(&resp->flags, opcode);
+    flags_set_aa(&resp->flags, AA_NO);
+    flags_set_tc(&resp->flags, TC_NO);
+    flags_set_rd(&resp->flags, rd);
+    flags_set_ra(&resp->flags, RA_NO);
+    flags_set_rcode(&resp->flags, RCODE_NXDOMAIN);
+
+    if (req->qdcount > 0) {
+        if (get_qtype(req->question.qtype) == QTYPE_A) {
             size_t count = 0;
             IPv4Address* ips = NULL;
 
             if (data_query_a_records(req->question.domain, &ips, &count,
                                      arena)) {
-                // Success
-                resp->rcode = 0; // NOERROR
+                flags_set_rcode(&resp->flags, RCODE_NOERROR);
                 resp->answers = ips;
-                resp->answer_count = count;
+                resp->ancount = count;
             }
         } else {
-            // Not Implemented or refused
-            resp->rcode = 4; // Not Implemented
+            flags_set_rcode(&resp->flags, RCODE_NOTIMP);
         }
     }
 }

@@ -9,17 +9,22 @@ bool dns_parse_request(const uint8_t* in_buf, size_t in_len,
     // TODO: Implement robust parsing logic here!
     // Extract transaction ID, Opcode, Questions, etc.
 
-    if (in_len < 12)
+    if (in_len < 12) // Abnormal length
         return false;
-    if ((in_buf[2] & 0x80) != 0)
-        return false; // Is a response
 
+    // COUNT
+    out_req->id = (in_buf[0] << 8) | in_buf[1];
+    out_req->flags = (in_buf[2] << 8) | in_buf[3];
     uint16_t qdcount = (in_buf[4] << 8) | in_buf[5];
+    out_req->qdcount = qdcount;
+    out_req->ancount = 0;
+    uint16_t nscount = 0;
+    out_req->nscount = nscount;
+    uint16_t arcount = (in_buf[10] << 8) | in_buf[11];
+    out_req->arcount = arcount;
+
     if (qdcount == 0)
         return false;
-
-    out_req->id = (in_buf[0] << 8) | in_buf[1];
-    out_req->q_count = qdcount;
 
     size_t offset = 12;
     size_t domain_len = 0;
@@ -70,23 +75,25 @@ size_t dns_format_response(const DNSResponse* resp, uint8_t* out_buf,
     out_buf[0] = (resp->id >> 8) & 0xFF;
     out_buf[1] = resp->id & 0xFF;
 
-    // Flags (Response, Standard Query, AA=0, TC=0, RD=1, RA=0, Z=0)
-    out_buf[2] = 0x81; // QR=1, Opcode=0, RD=1
-    out_buf[3] = resp->rcode & 0x0F;
+    // Flags
+    out_buf[2] = (resp->flags >> 8) & 0xFF;
+    out_buf[3] = resp->flags & 0xFF;
 
-    // QDCOUNT = 1
-    out_buf[4] = 0x00;
-    out_buf[5] = 0x01;
+    // QDCOUNT
+    out_buf[4] = (resp->qdcount >> 8) & 0xFF;
+    out_buf[5] = resp->qdcount & 0xFF;
 
     // ANCOUNT
-    out_buf[6] = (resp->answer_count >> 8) & 0xFF;
-    out_buf[7] = resp->answer_count & 0xFF;
+    out_buf[6] = (resp->ancount >> 8) & 0xFF;
+    out_buf[7] = resp->ancount & 0xFF;
 
-    // NSCOUNT = 0, ARCOUNT = 0
-    out_buf[8] = 0;
-    out_buf[9] = 0;
-    out_buf[10] = 0;
-    out_buf[11] = 0;
+    // NSCOUNT
+    out_buf[8] = (resp->nscount >> 8) & 0xFF;
+    out_buf[9] = resp->nscount & 0xFF;
+
+    // ARCOUNT
+    out_buf[10] = (resp->arcount >> 8) & 0xFF;
+    out_buf[11] = resp->arcount & 0xFF;
 
     size_t offset = 12;
 
@@ -124,7 +131,7 @@ size_t dns_format_response(const DNSResponse* resp, uint8_t* out_buf,
     out_buf[offset++] = resp->question.qclass & 0xFF;
 
     // Write Answers
-    for (size_t a = 0; a < resp->answer_count; a++) {
+    for (size_t a = 0; a < resp->ancount; a++) {
         if (offset + 16 > max_len)
             return 0;
 

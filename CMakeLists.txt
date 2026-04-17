@@ -12,6 +12,7 @@ include_directories(include third_party/sqlite3)
 
 set(SOURCES
         src/main.c
+        src/types.c
         src/server.c
         src/db.c
         src/cache.c
