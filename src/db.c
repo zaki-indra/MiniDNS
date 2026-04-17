@@ -1,17 +1,9 @@
 #include "db.h"
 
-#ifdef _WIN32
-#include <winsock2.h>
-#include <ws2tcpip.h>
-#else
-#include <arpa/inet.h>
-#endif
-
 #include "sqlite3.h"
 #include "types.h"
 
 #include <stdio.h>
-#include <string.h>
 
 static sqlite3* db = nullptr;
 static sqlite3_stmt* stmt_query = nullptr;
@@ -66,12 +58,12 @@ bool db_list(void)
     printf("DNS Records:\n");
 
     IPv4Address ip;
-    char buffer[INET_ADDRSTRLEN];
+
     while (sqlite3_step(stmt) == SQLITE_ROW) {
         const unsigned char* domain = sqlite3_column_text(stmt, 0);
         ip.words = sqlite3_column_int(stmt, 1);
-        inet_ntop(AF_INET, ip.bytes, buffer, sizeof(buffer));
-        printf("  %s -> %s\n", (const char*)domain, buffer);
+        printf("  %s -> %hhu.%hhu.%hhu.%hhu\n", (const char*)domain, ip.bytes[0],
+               ip.bytes[1], ip.bytes[2], ip.bytes[3]);
     }
     sqlite3_finalize(stmt);
     return true;
