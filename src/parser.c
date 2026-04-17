@@ -31,8 +31,6 @@ bool dns_parse_request(const uint8_t* in_buf, size_t in_len, DNS* out_dns,
         uint8_t len = in_buf[offset++];
         if (len == 0)
             break;
-        if ((len & 0xC0) == 0xC0)
-            return false;
         if (offset + len > in_len)
             return false;
 
