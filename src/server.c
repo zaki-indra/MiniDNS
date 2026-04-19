@@ -20,6 +20,7 @@ typedef int socklen_t;
 #define closesocket close
 #endif
 
+#define DNS_HEADER_SIZE 12
 #define BUFFER_SIZE 512
 #define ARENA_SIZE 4096
 
@@ -80,14 +81,33 @@ void server_start(int port)
         arena_reset(&arena);
 
         DNS dns;
-        if (dns_parse_request(buffer, n, &dns, &arena)) {
-            dispatcher_handle(&dns, &arena);
+        rc_t rc;
+        rc = dns_parse_header(buffer, n, &dns);
+        switch (rc) {
+        case OK:
+            if (dns_parse_body(buffer, n, &dns, &arena) == OK) {
+                dispatcher_handle(&dns, &arena);
 
-            size_t out_len = dns_format_response(&dns, buffer, BUFFER_SIZE);
-            if (out_len > 0) {
-                sendto(sockfd, (const char*)buffer, (int)out_len, 0,
-                       (const struct sockaddr*)&client_addr, len);
+                size_t out_len = dns_format_response(&dns, buffer, BUFFER_SIZE);
+                if (out_len > 0) {
+                    sendto(sockfd, (const char*)buffer, (int)out_len, 0,
+                           (const struct sockaddr*)&client_addr, len);
+                }
             }
+            break;
+
+        case OK_RECURSE:
+            // Not implemented yet.
+            break;
+
+        case ERR_NO_ECHO:
+            break;
+
+        case ERR_ECHO:
+            dns_format_response(&dns, buffer, DNS_HEADER_SIZE);
+            sendto(sockfd, (const char*)buffer, (int)n, 0,
+                   (const struct sockaddr*)&client_addr, DNS_HEADER_SIZE);
+            break;
         }
     }
 

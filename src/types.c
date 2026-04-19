@@ -10,7 +10,7 @@ opcode_t flags_get_opcode(uint16_t flags)
     int mask = 0x7800;
     switch ((flags & mask) >> 11) {
     case 0:
-        return OPCODE_STANDARD;
+        return OPCODE_QUERY;
     case 1:
         return OPCODE_IQUERY;
     case 2:
@@ -19,8 +19,10 @@ opcode_t flags_get_opcode(uint16_t flags)
         return OPCODE_NOTIFY;
     case 5:
         return OPCODE_UPDATE;
+    case 6:
+        return OPCODE_DSO;
     default:
-        return OPCODE_NONSTANDARD;
+        return OPCODE_UNKNOWN;
     }
 }
 
@@ -84,6 +86,12 @@ void flags_set_ra(uint16_t* flags, ra_t ra)
 {
     int mask = 0x80;
     *flags = (*flags & ~mask) | ((uint16_t)ra << 7);
+}
+
+void flags_set_z(uint16_t* flags)
+{
+    int mask = 0x70;
+    *flags = (*flags & ~mask) | ((uint16_t)0 << 5);
 }
 
 void flags_set_rcode(uint16_t* flags, rcode_t rcode)

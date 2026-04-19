@@ -3,6 +3,13 @@
 #include <stddef.h>
 #include <stdint.h>
 
+typedef enum {
+    OK = 0,
+    OK_RECURSE = 1,
+    ERR_NO_ECHO = 2,
+    ERR_ECHO = 3,
+} rc_t;
+
 typedef union IPv4Address {
     uint8_t octets[4];
     uint16_t hwords[2];
@@ -22,12 +29,13 @@ typedef enum {
 } qr_t;
 
 typedef enum {
-    OPCODE_STANDARD = 0,
+    OPCODE_QUERY = 0,
     OPCODE_IQUERY = 1,
     OPCODE_STATUS = 2,
     OPCODE_NOTIFY = 4,
     OPCODE_UPDATE = 5,
-    OPCODE_NONSTANDARD = 6,
+    OPCODE_DSO = 6,
+    OPCODE_UNKNOWN = 7,
 } opcode_t;
 
 typedef enum {
@@ -115,6 +123,7 @@ void flags_set_aa(uint16_t* flags, aa_t aa);
 void flags_set_tc(uint16_t* flags, tc_t tc);
 void flags_set_rd(uint16_t* flags, rd_t rd);
 void flags_set_ra(uint16_t* flags, ra_t ra);
+void flags_set_z(uint16_t* flags);
 void flags_set_rcode(uint16_t* flags, rcode_t rcode);
 
 qtype_t get_qtype(uint16_t qtype);
