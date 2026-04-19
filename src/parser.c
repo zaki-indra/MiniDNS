@@ -68,9 +68,10 @@ rc_t dns_parse_body(const uint8_t* in_buf, size_t in_len, DNS* out_dns,
     out_dns->questions = (DNSQuestion*)arena_alloc(
         arena, out_dns->qdcount * sizeof(DNSQuestion));
 
-    // Loop questions
+    // Parse question records
+    size_t domain_len;
     for (size_t q = 0; q < out_dns->qdcount; q++) {
-        size_t domain_len = 0;
+        domain_len = 0;
         char domain_out[256];
         while (offset < in_len) {
             uint8_t len = in_buf[offset++];
@@ -107,6 +108,18 @@ rc_t dns_parse_body(const uint8_t* in_buf, size_t in_len, DNS* out_dns,
         offset += 4;
     }
 
+    // Parse additional records
+    out_dns->authorities = nullptr;
+
+    uint16_t arcount = out_dns->arcount;
+    size_t remaining = in_len - offset;
+    if (remaining <= 0) {
+        return OK;
+    }
+    out_dns->additional_data =
+        (uint8_t*)arena_alloc(arena, remaining * sizeof(uint8_t));
+    memcpy(out_dns->additional_data, in_buf + offset, remaining);
+    out_dns->additional_len = remaining;
     return OK;
 }
 
@@ -210,6 +223,10 @@ size_t dns_format_response(const DNS* dns, uint8_t* out_buf, size_t max_len)
         out_buf[offset++] = dns->answers[a].octets[2];
         out_buf[offset++] = dns->answers[a].octets[3];
     }
+
+    memcpy(out_buf + offset, dns->additional_data,
+           dns->additional_len * sizeof(uint8_t));
+    offset += dns->additional_len;
 
     return offset;
 }

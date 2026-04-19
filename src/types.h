@@ -107,6 +107,9 @@ typedef struct {
 
     ResourceRecord* authorities;
     ResourceRecord* additional;
+
+    size_t additional_len;
+    uint8_t* additional_data;
 } DNS;
 
 qr_t flags_get_qr(uint16_t flags);
