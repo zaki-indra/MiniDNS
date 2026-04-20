@@ -20,6 +20,7 @@ set(SOURCES
         src/parser.c
         src/data.c
         src/dispatcher.c
+        src/queue.c
         third_party/sqlite3/sqlite3.c
 )
 
