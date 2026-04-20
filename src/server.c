@@ -5,6 +5,7 @@
 #include "memory.h"
 #include "parser.h"
 
+#include <stdalign.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -20,6 +21,7 @@ typedef int socklen_t;
 #define closesocket close
 #endif
 
+#define ALIGNMENT 64
 #define DNS_HEADER_SIZE 12
 #define BUFFER_SIZE 512
 #define ARENA_SIZE 4096
@@ -63,7 +65,7 @@ void server_start(int port)
     cache_init();
 
     uint8_t buffer[BUFFER_SIZE];
-    uint8_t arena_buffer[ARENA_SIZE];
+    alignas(ALIGNMENT) uint8_t arena_buffer[ARENA_SIZE];
     Arena arena;
     arena_init(&arena, arena_buffer, ARENA_SIZE);
 
