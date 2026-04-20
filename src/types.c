@@ -106,6 +106,16 @@ qtype_t get_qtype(uint16_t qtype)
     case 1:
         return QTYPE_A;
     default:
-        return QTYPE_NOTIMP;
+        return QTYPE_ANY;
+    }
+}
+
+qclass_t get_qclass(uint16_t qclass)
+{
+    switch (qclass) {
+    case 1:
+        return QCLASS_IN;
+    default:
+        return QCLASS_ANY;
     }
 }

@@ -39,6 +39,9 @@ rc_t dns_parse_header(const uint8_t* in_buf, size_t in_len, DNS* out_dns)
 
     // 6. Handle Standard Queries
     if (opcode == OPCODE_QUERY && out_dns->qdcount == 1) {
+        flags_set_qr(&out_dns->flags, QR_RESPONSE);
+        flags_set_ra(&out_dns->flags, RA_NO);
+        flags_set_z(&out_dns->flags);
         return OK;
     }
 
@@ -78,8 +81,10 @@ rc_t dns_parse_body(const uint8_t* in_buf, size_t in_len, DNS* out_dns,
             if (len == 0) {
                 goto outer;
             }
-            if (offset + len > in_len)
-                return ERR_NO_ECHO;
+            if (offset + len > in_len) {
+                flags_set_rcode(&out_dns->flags, RCODE_FORMERR);
+                return ERR_ECHO;
+            }
 
             if (domain_len > 0 && domain_len < sizeof(domain_out) - 1) {
                 domain_out[domain_len++] = '.';
@@ -100,10 +105,19 @@ rc_t dns_parse_body(const uint8_t* in_buf, size_t in_len, DNS* out_dns,
 
         if (offset + 4 > in_len)
             return ERR_NO_ECHO;
-        out_dns->questions[q].qtype =
-            (in_buf[offset] << 8) | in_buf[offset + 1];
-        out_dns->questions[q].qclass =
-            (in_buf[offset + 2] << 8) | in_buf[offset + 3];
+        uint16_t qtype = (in_buf[offset] << 8) | in_buf[offset + 1];
+        uint16_t qclass = (in_buf[offset + 2] << 8) | in_buf[offset + 3];
+
+        qtype_t qtype_e = get_qtype(qtype);
+        qclass_t qclass_e = get_qclass(qclass);
+
+        if (qtype_e == QTYPE_ANY || qclass_e == QCLASS_ANY) {
+            flags_set_rcode(&out_dns->flags, RCODE_NOTIMP);
+            return ERR_ECHO;
+        }
+
+        out_dns->questions[q].qtype = qtype;
+        out_dns->questions[q].qclass = qclass;
 
         offset += 4;
     }

@@ -73,9 +73,14 @@ typedef enum {
 } rcode_t;
 
 typedef enum {
-    QTYPE_NOTIMP = -1,
     QTYPE_A = 1,
+    QTYPE_ANY = 65536,
 } qtype_t;
+
+typedef enum {
+    QCLASS_IN = 1,
+    QCLASS_ANY = 65536,
+} qclass_t;
 
 typedef struct {
     char qname[256];
@@ -130,3 +135,4 @@ void flags_set_z(uint16_t* flags);
 void flags_set_rcode(uint16_t* flags, rcode_t rcode);
 
 qtype_t get_qtype(uint16_t qtype);
+qclass_t get_qclass(uint16_t qclass);
