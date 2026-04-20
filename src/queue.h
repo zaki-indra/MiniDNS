@@ -34,10 +34,10 @@ typedef int socklen_t;
  * allocation is ever needed per-packet.
  */
 typedef struct {
-    uint8_t data[MAX_PACKET_SIZE];
-    size_t len;
+    uint8_t            data[MAX_PACKET_SIZE];
+    size_t             len;
     struct sockaddr_in client_addr;
-    socklen_t addr_len;
+    socklen_t          addr_len;
 } Packet;
 
 /*
@@ -59,10 +59,10 @@ typedef struct {
     size_t head;
     size_t tail;
     size_t count;
-    bool shutdown;
-    mtx_t mutex;
-    cnd_t not_empty; /* workers wait here when queue is empty */
-    cnd_t not_full;  /* producer waits here when queue is full */
+    bool   shutdown;
+    mtx_t  mutex;
+    cnd_t  not_empty; /* workers wait here when queue is empty */
+    cnd_t  not_full;  /* producer waits here when queue is full */
 } PacketQueue;
 
 /*
@@ -71,12 +71,12 @@ typedef struct {
  */
 typedef struct {
     PacketQueue* queue;
-    int sockfd;
-    int worker_id;
+    int          sockfd;
+    int          worker_id;
 } WorkerCtx;
 
 /* Lifecycle */
-int queue_init(PacketQueue* q);
+int  queue_init(PacketQueue* q);
 void queue_destroy(PacketQueue* q);
 void queue_shutdown(PacketQueue* q);
 

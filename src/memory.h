@@ -6,8 +6,8 @@
 // A simple arena / bump allocator
 typedef struct {
     uint8_t* buffer;
-    size_t size;
-    size_t offset;
+    size_t   size;
+    size_t   offset;
 } Arena;
 
 // Initialize the arena with a given memory block
