@@ -86,7 +86,7 @@ typedef struct {
     char     qname[256];
     uint16_t qtype;
     uint16_t qclass;
-} DNSQuestion;
+} DnsQuestion;
 
 typedef struct {
     char     name[256];
@@ -95,7 +95,7 @@ typedef struct {
     uint32_t ttl;
     uint16_t rdlength;
     uint8_t  rdata[256];
-} ResourceRecord;
+} DnsResourceRecord;
 
 typedef struct {
     // Header
@@ -106,16 +106,16 @@ typedef struct {
     uint16_t nscount;
     uint16_t arcount;
 
-    DNSQuestion* questions;
+    DnsQuestion* questions;
 
     IPv4Address* answers;
 
-    ResourceRecord* authorities;
-    ResourceRecord* additional;
+    DnsResourceRecord* authorities;
+    DnsResourceRecord* additional;
 
     size_t   additional_len;
     uint8_t* additional_data;
-} DNS;
+} DnsMessage;
 
 qr_t     flags_get_qr(uint16_t flags);
 opcode_t flags_get_opcode(uint16_t flags);

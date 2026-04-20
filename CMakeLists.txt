@@ -18,7 +18,9 @@ set(SOURCES
         src/cache.c
         src/memory.c
         src/parser.c
-        src/data.c
+        src/resolver.c
+        src/handlers/opcode_query.c
+        src/handlers/qtype_a.c
         src/dispatcher.c
         src/queue.c
         third_party/sqlite3/sqlite3.c

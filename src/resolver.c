@@ -1,12 +1,12 @@
-#include "data.h"
+#include "resolver.h"
 
 #include "cache.h"
 #include "db.h"
 
 #include <stdio.h>
 
-bool data_query_a_records(const char* domain, IPv4Address** ips_out,
-                          size_t* count_out, Arena* arena)
+bool resolve_a_records(const char* domain, IPv4Address** ips_out,
+                       size_t* count_out, Arena* arena)
 {
     if (!domain || !ips_out || !count_out || !arena) {
         return false;
@@ -19,7 +19,7 @@ bool data_query_a_records(const char* domain, IPv4Address** ips_out,
         return false;
 
     if (cache_get(domain, ip)) {
-        *ips_out = ip;
+        *ips_out   = ip;
         *count_out = 1;
         printf("Query: %s (Cache Hit)\n", domain);
         return true;
@@ -27,7 +27,7 @@ bool data_query_a_records(const char* domain, IPv4Address** ips_out,
 
     if (db_query(domain, ip)) {
         cache_set(domain, ip);
-        *ips_out = ip;
+        *ips_out   = ip;
         *count_out = 1;
         printf("Query: %s (DB Hit)\n", domain);
         return true;
@@ -35,6 +35,6 @@ bool data_query_a_records(const char* domain, IPv4Address** ips_out,
 
     printf("Query: %s -> NXDOMAIN\n", domain);
     *count_out = 0;
-    *ips_out = NULL;
+    *ips_out   = NULL;
     return false;
 }

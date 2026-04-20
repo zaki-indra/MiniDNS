@@ -36,8 +36,8 @@ static PacketQueue queue;
  * ---------------------------------------------------------------------- */
 static rc_t process_packet(Packet* pkt, Arena* arena)
 {
-    DNS  dns;
-    rc_t rc;
+    DnsMessage dns;
+    rc_t       rc;
     rc = dns_parse_header(pkt->data, pkt->len, &dns);
     switch (rc) {
     case OK:
@@ -46,6 +46,7 @@ static rc_t process_packet(Packet* pkt, Arena* arena)
             pkt->len = dns_format_response(&dns, pkt->data, BUFFER_SIZE);
             return OK;
         } else {
+            printf("Failed to parse body\n");
             return ERR_ECHO;
         }
 

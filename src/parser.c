@@ -3,7 +3,7 @@
 #include <stdio.h>
 #include <string.h>
 
-rc_t dns_parse_header(const uint8_t* in_buf, size_t in_len, DNS* out_dns)
+rc_t dns_parse_header(const uint8_t* in_buf, size_t in_len, DnsMessage* out_dns)
 {
     // 1. Buffer bounds check
     if (in_len < 12) {
@@ -11,8 +11,8 @@ rc_t dns_parse_header(const uint8_t* in_buf, size_t in_len, DNS* out_dns)
     }
 
     // 2. Parse directly into the struct to DRY up the code
-    out_dns->id = (in_buf[0] << 8) | in_buf[1];
-    out_dns->flags = (in_buf[2] << 8) | in_buf[3];
+    out_dns->id      = (in_buf[0] << 8) | in_buf[1];
+    out_dns->flags   = (in_buf[2] << 8) | in_buf[3];
     out_dns->qdcount = (in_buf[4] << 8) | in_buf[5];
     out_dns->ancount = (in_buf[6] << 8) | in_buf[7];
     out_dns->nscount = (in_buf[8] << 8) | in_buf[9];
@@ -48,7 +48,9 @@ rc_t dns_parse_header(const uint8_t* in_buf, size_t in_len, DNS* out_dns)
     // 7. Format Error Fallback (qdcount is 0 or > 1)
     flags_set_qr(&out_dns->flags, QR_RESPONSE);
     flags_set_opcode(&out_dns->flags, OPCODE_QUERY);
+    flags_set_tc(&out_dns->flags, TC_NO);
     flags_set_ra(&out_dns->flags, RA_NO);
+    flags_set_z(&out_dns->flags);
     flags_set_rcode(&out_dns->flags, RCODE_FORMERR);
 
     // Safely strip payload counts so the error echo is just the header
@@ -60,7 +62,7 @@ rc_t dns_parse_header(const uint8_t* in_buf, size_t in_len, DNS* out_dns)
     return ERR_ECHO;
 }
 
-rc_t dns_parse_body(const uint8_t* in_buf, size_t in_len, DNS* out_dns,
+rc_t dns_parse_body(const uint8_t* in_buf, size_t in_len, DnsMessage* out_dns,
                     Arena* arena)
 {
     // TODO: Implement robust parsing logic here!
@@ -68,8 +70,8 @@ rc_t dns_parse_body(const uint8_t* in_buf, size_t in_len, DNS* out_dns,
 
     size_t offset = 12;
 
-    out_dns->questions = (DNSQuestion*)arena_alloc(
-        arena, out_dns->qdcount * sizeof(DNSQuestion));
+    out_dns->questions = (DnsQuestion*)arena_alloc(
+        arena, out_dns->qdcount * sizeof(DnsQuestion));
 
     // Parse question records
     size_t domain_len;
@@ -105,10 +107,10 @@ rc_t dns_parse_body(const uint8_t* in_buf, size_t in_len, DNS* out_dns,
 
         if (offset + 4 > in_len)
             return ERR_NO_ECHO;
-        uint16_t qtype = (in_buf[offset] << 8) | in_buf[offset + 1];
+        uint16_t qtype  = (in_buf[offset] << 8) | in_buf[offset + 1];
         uint16_t qclass = (in_buf[offset + 2] << 8) | in_buf[offset + 3];
 
-        qtype_t qtype_e = get_qtype(qtype);
+        qtype_t  qtype_e  = get_qtype(qtype);
         qclass_t qclass_e = get_qclass(qclass);
 
         if (qtype_e == QTYPE_ANY || qclass_e == QCLASS_ANY) {
@@ -116,7 +118,7 @@ rc_t dns_parse_body(const uint8_t* in_buf, size_t in_len, DNS* out_dns,
             return ERR_ECHO;
         }
 
-        out_dns->questions[q].qtype = qtype;
+        out_dns->questions[q].qtype  = qtype;
         out_dns->questions[q].qclass = qclass;
 
         offset += 4;
@@ -125,8 +127,8 @@ rc_t dns_parse_body(const uint8_t* in_buf, size_t in_len, DNS* out_dns,
     // Parse additional records
     out_dns->authorities = nullptr;
 
-    uint16_t arcount = out_dns->arcount;
-    size_t remaining = in_len - offset;
+    uint16_t arcount   = out_dns->arcount;
+    size_t   remaining = in_len - offset;
     if (remaining <= 0) {
         return OK;
     }
@@ -137,7 +139,8 @@ rc_t dns_parse_body(const uint8_t* in_buf, size_t in_len, DNS* out_dns,
     return OK;
 }
 
-size_t dns_format_response(const DNS* dns, uint8_t* out_buf, size_t max_len)
+size_t dns_format_response(const DnsMessage* dns, uint8_t* out_buf,
+                           size_t max_len)
 {
     // TODO: Implement robust formatting logic here!
     // Serialize the response into the output buffer based on DNS wire format.
@@ -171,9 +174,9 @@ size_t dns_format_response(const DNS* dns, uint8_t* out_buf, size_t max_len)
 
     size_t offset = 12;
 
-    const char* name = dns->questions[0].qname;
+    const char* name  = dns->questions[0].qname;
     const char* start = name;
-    const char* dot = strchr(start, '.');
+    const char* dot   = strchr(start, '.');
     while (dot != NULL) {
         size_t len = dot - start;
         if (offset < max_len)
@@ -183,7 +186,7 @@ size_t dns_format_response(const DNS* dns, uint8_t* out_buf, size_t max_len)
                 out_buf[offset++] = start[i];
         }
         start = dot + 1;
-        dot = strchr(start, '.');
+        dot   = strchr(start, '.');
     }
     size_t last_len = strlen(start);
     if (last_len > 0) {

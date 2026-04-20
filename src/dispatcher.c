@@ -1,33 +1,25 @@
 #include "dispatcher.h"
 
-#include "data.h"
+#include "handlers/opcode_query.h"
 
 #include <stdio.h>
 
-void dispatcher_handle(DNS* dns, Arena* arena)
+void dispatcher_handle(DnsMessage* msg, Arena* arena)
 {
-    flags_set_qr(&dns->flags, QR_RESPONSE);
-    flags_set_aa(&dns->flags, AA_NO);
-    flags_set_tc(&dns->flags, TC_NO);
-    flags_set_ra(&dns->flags, RA_NO);
+    // Setting default response flags for a server
+    flags_set_qr(&msg->flags, QR_RESPONSE);
+    flags_set_aa(&msg->flags, AA_NO);
+    flags_set_tc(&msg->flags, TC_NO);
+    flags_set_ra(&msg->flags, RA_NO);
 
-    if (dns->qdcount > 0) {
-        if (get_qtype(dns->questions[0].qtype) == QTYPE_A) {
-            size_t       count = 0;
-            IPv4Address* ips   = nullptr;
+    opcode_t opcode = flags_get_opcode(msg->flags);
 
-            if (data_query_a_records(dns->questions[0].qname, &ips, &count,
-                                     arena)) {
-                flags_set_rcode(&dns->flags, RCODE_NOERROR);
-                dns->answers = ips;
-                dns->ancount = count;
-            } else {
-                flags_set_rcode(&dns->flags, RCODE_NXDOMAIN);
-                dns->answers = nullptr;
-                dns->ancount = 0;
-            }
-        } else {
-            flags_set_rcode(&dns->flags, RCODE_NOTIMP);
-        }
+    switch (opcode) {
+    case OPCODE_QUERY:
+        handle_opcode_query(msg, arena);
+        break;
+    default:
+        flags_set_rcode(&msg->flags, RCODE_NOTIMP);
+        break;
     }
 }
