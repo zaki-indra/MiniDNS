@@ -3,16 +3,15 @@
 #include <stdio.h>
 #include <string.h>
 
-rc_t dns_parse_header(const uint8_t* in_buf, size_t in_len, DnsMessage* out_dns)
-{
+rc_t dns_parse_header(const uint8_t *in_buf, size_t in_len, DnsMessage *out_dns) {
     // 1. Buffer bounds check
     if (in_len < 12) {
         return ERR_NO_ECHO;
     }
 
     // 2. Parse directly into the struct to DRY up the code
-    out_dns->id      = (in_buf[0] << 8) | in_buf[1];
-    out_dns->flags   = (in_buf[2] << 8) | in_buf[3];
+    out_dns->id = (in_buf[0] << 8) | in_buf[1];
+    out_dns->flags = (in_buf[2] << 8) | in_buf[3];
     out_dns->qdcount = (in_buf[4] << 8) | in_buf[5];
     out_dns->ancount = (in_buf[6] << 8) | in_buf[7];
     out_dns->nscount = (in_buf[8] << 8) | in_buf[9];
@@ -62,15 +61,14 @@ rc_t dns_parse_header(const uint8_t* in_buf, size_t in_len, DnsMessage* out_dns)
     return ERR_ECHO;
 }
 
-rc_t dns_parse_body(const uint8_t* in_buf, size_t in_len, DnsMessage* out_dns,
-                    Arena* arena)
-{
+rc_t dns_parse_body(const uint8_t *in_buf, size_t in_len, DnsMessage *out_dns,
+                    Arena *arena) {
     // TODO: Implement robust parsing logic here!
     // Extract transaction ID, Opcode, Questions, etc.
 
     size_t offset = 12;
 
-    out_dns->questions = (DnsQuestion*)arena_alloc(
+    out_dns->questions = (DnsQuestion *) arena_alloc(
         arena, out_dns->qdcount * sizeof(DnsQuestion));
 
     // Parse question records
@@ -107,10 +105,10 @@ rc_t dns_parse_body(const uint8_t* in_buf, size_t in_len, DnsMessage* out_dns,
 
         if (offset + 4 > in_len)
             return ERR_NO_ECHO;
-        uint16_t qtype  = (in_buf[offset] << 8) | in_buf[offset + 1];
+        uint16_t qtype = (in_buf[offset] << 8) | in_buf[offset + 1];
         uint16_t qclass = (in_buf[offset + 2] << 8) | in_buf[offset + 3];
 
-        qtype_t  qtype_e  = get_qtype(qtype);
+        qtype_t qtype_e = get_qtype(qtype);
         qclass_t qclass_e = get_qclass(qclass);
 
         if (qtype_e == QTYPE_ANY || qclass_e == QCLASS_ANY) {
@@ -118,7 +116,7 @@ rc_t dns_parse_body(const uint8_t* in_buf, size_t in_len, DnsMessage* out_dns,
             return ERR_ECHO;
         }
 
-        out_dns->questions[q].qtype  = qtype;
+        out_dns->questions[q].qtype = qtype;
         out_dns->questions[q].qclass = qclass;
 
         offset += 4;
@@ -127,21 +125,32 @@ rc_t dns_parse_body(const uint8_t* in_buf, size_t in_len, DnsMessage* out_dns,
     // Parse additional records
     out_dns->authorities = nullptr;
 
-    uint16_t arcount   = out_dns->arcount;
-    size_t   remaining = in_len - offset;
+    uint16_t arcount = out_dns->arcount;
+    size_t remaining = in_len - offset;
     if (remaining <= 0) {
         return OK;
     }
     out_dns->additional_data =
-        (uint8_t*)arena_alloc(arena, remaining * sizeof(uint8_t));
+            (uint8_t *) arena_alloc(arena, remaining * sizeof(uint8_t));
     memcpy(out_dns->additional_data, in_buf + offset, remaining);
     out_dns->additional_len = remaining;
     return OK;
 }
 
-size_t dns_format_response(const DnsMessage* dns, uint8_t* out_buf,
-                           size_t max_len)
-{
+inline rc_t dns_parse_request(const uint8_t *in_buf, size_t in_len,
+                              DnsMessage *out_dns, Arena *arena) {
+    /**
+     * Header checking
+     */
+
+    if (in_len < 12) {
+        return ERR_NO_ECHO;
+    }
+    return OK;
+}
+
+size_t dns_format_response(const DnsMessage *dns, uint8_t *out_buf,
+                           size_t max_len) {
     // TODO: Implement robust formatting logic here!
     // Serialize the response into the output buffer based on DNS wire format.
 
@@ -174,24 +183,24 @@ size_t dns_format_response(const DnsMessage* dns, uint8_t* out_buf,
 
     size_t offset = 12;
 
-    const char* name  = dns->questions[0].qname;
-    const char* start = name;
-    const char* dot   = strchr(start, '.');
+    const char *name = dns->questions[0].qname;
+    const char *start = name;
+    const char *dot = strchr(start, '.');
     while (dot != nullptr) {
         size_t len = dot - start;
         if (offset < max_len)
-            out_buf[offset++] = (uint8_t)len;
+            out_buf[offset++] = (uint8_t) len;
         for (size_t i = 0; i < len; i++) {
             if (offset < max_len)
                 out_buf[offset++] = start[i];
         }
         start = dot + 1;
-        dot   = strchr(start, '.');
+        dot = strchr(start, '.');
     }
     size_t last_len = strlen(start);
     if (last_len > 0) {
         if (offset < max_len)
-            out_buf[offset++] = (uint8_t)last_len;
+            out_buf[offset++] = (uint8_t) last_len;
         for (size_t i = 0; i < last_len; i++) {
             if (offset < max_len)
                 out_buf[offset++] = start[i];

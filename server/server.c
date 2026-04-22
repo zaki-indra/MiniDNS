@@ -5,6 +5,7 @@
 #include "memory.h"
 #include "parser.h"
 #include "queue.h"
+#include "debug.h"
 
 #include <stdalign.h>
 #include <stdio.h>
@@ -34,32 +35,32 @@ static PacketQueue queue;
  * Operates on the worker's private stack copy: no shared state.
  * Modify pkt->data and pkt->len in-place to form the response.
  * ---------------------------------------------------------------------- */
-static rc_t process_packet(Packet* pkt, Arena* arena)
-{
+static rc_t process_packet(Packet *pkt, Arena *arena) {
     DnsMessage dns;
-    rc_t       rc;
+    rc_t rc;
     rc = dns_parse_header(pkt->data, pkt->len, &dns);
     switch (rc) {
-    case OK:
-        if (dns_parse_body(pkt->data, pkt->len, &dns, arena) == OK) {
-            dispatcher_handle(&dns, arena);
-            pkt->len = dns_format_response(&dns, pkt->data, BUFFER_SIZE);
-            return OK;
-        } else {
-            printf("Failed to parse body\n");
-            return ERR_ECHO;
-        }
+        case OK:
+            if (dns_parse_body(pkt->data, pkt->len, &dns, arena) == OK) {
+                print_dns(&dns);
+                dispatcher_handle(&dns, arena);
+                pkt->len = dns_format_response(&dns, pkt->data, BUFFER_SIZE);
+                return OK;
+            } else {
+                printf("Failed to parse body\n");
+                return ERR_ECHO;
+            }
 
-    case OK_RECURSE:
-        // Not implemented yet.
-        break;
+        case OK_RECURSE:
+            // Not implemented yet.
+            break;
 
-    case ERR_NO_ECHO:
-        break;
+        case ERR_NO_ECHO:
+            break;
 
-    case ERR_ECHO:
-        dns_format_response(&dns, pkt->data, DNS_HEADER_SIZE);
-        break;
+        case ERR_ECHO:
+            dns_format_response(&dns, pkt->data, DNS_HEADER_SIZE);
+            break;
     }
     return rc;
 }
@@ -73,15 +74,14 @@ static rc_t process_packet(Packet* pkt, Arena* arena)
  *   3. sendto — thread-safe on a shared UDP fd for datagrams.
  *   4. Repeat until queue_pop returns false (shutdown + empty).
  * ---------------------------------------------------------------------- */
-static int worker_fn(void* arg)
-{
-    WorkerCtx* ctx = arg;
+static int worker_fn(void *arg) {
+    WorkerCtx *ctx = arg;
 
     /*
      * arena and local are reused every iteration — no per-request allocation.
      */
     alignas(ALIGNMENT) uint8_t processing_buffer[ARENA_SIZE];
-    Arena                      arena;
+    Arena arena;
     arena_init(&arena, processing_buffer, ARENA_SIZE);
     Packet local;
 
@@ -93,9 +93,9 @@ static int worker_fn(void* arg)
             continue;
         }
 
-        int sent =
-            sendto(ctx->sockfd, (char*)local.data, local.len, 0,
-                   (const struct sockaddr*)&local.client_addr, local.addr_len);
+        long sent =
+                sendto(ctx->sockfd, (char *) local.data, local.len, 0,
+                       (const struct sockaddr *) &local.client_addr, local.addr_len);
 
         if (sent < 0) {
             perror("sendto");
@@ -106,8 +106,7 @@ static int worker_fn(void* arg)
     return 0;
 }
 
-void server_start(int port)
-{
+void server_start(int port) {
 #ifdef _WIN32
     WSADATA wsaData;
     if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0) {
@@ -126,12 +125,12 @@ void server_start(int port)
     }
 
     struct sockaddr_in server_addr = {
-        .sin_family      = AF_INET,
+        .sin_family = AF_INET,
         .sin_addr.s_addr = INADDR_ANY,
-        .sin_port        = htons((uint16_t)port),
+        .sin_port = htons((uint16_t) port),
     };
 
-    if (bind(sockfd, (const struct sockaddr*)&server_addr,
+    if (bind(sockfd, (const struct sockaddr *) &server_addr,
              sizeof(server_addr)) < 0) {
         perror("bind");
         closesocket(sockfd);
@@ -146,14 +145,18 @@ void server_start(int port)
 
     cache_init();
 
-    thrd_t    workers[WORKER_COUNT];
+    thrd_t workers[WORKER_COUNT];
     WorkerCtx ctxs[WORKER_COUNT];
 
     for (int i = 0; i < WORKER_COUNT; i++) {
-        ctxs[i] = (WorkerCtx){
-            .queue     = &queue,
-            .sockfd    = sockfd,
-            .worker_id = i,
+        ctxs[i] = (WorkerCtx)
+        {
+            .
+            queue = &queue,
+            .
+            sockfd = sockfd,
+            .
+            worker_id = i,
         };
         if (thrd_create(&workers[i], worker_fn, &ctxs[i]) != thrd_success) {
             fprintf(stderr, "thrd_create failed for worker %d\n", i);
@@ -177,14 +180,14 @@ void server_start(int port)
     while (1) {
         pkt.addr_len = sizeof(pkt.client_addr);
 
-        int n = recvfrom(sockfd, (char*)pkt.data, BUFFER_SIZE, 0,
-                         (struct sockaddr*)&pkt.client_addr, &pkt.addr_len);
+        int n = recvfrom(sockfd, (char *) pkt.data, BUFFER_SIZE, 0,
+                         (struct sockaddr *) &pkt.client_addr, &pkt.addr_len);
         if (n < 0) {
             perror("recvfrom");
             break;
         }
 
-        pkt.len = (size_t)n;
+        pkt.len = (size_t) n;
 
         /*
          * queue_push blocks here if the queue is full — this is the
