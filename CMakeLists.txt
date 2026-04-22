@@ -11,18 +11,18 @@ endif()
 include_directories(include third_party/sqlite3)
 
 set(SOURCES
-        src/main.c
-        src/types.c
-        src/server.c
-        src/db.c
-        src/cache.c
-        src/memory.c
-        src/parser.c
-        src/resolver.c
-        src/handlers/opcode_query.c
-        src/handlers/qtype_a.c
-        src/dispatcher.c
-        src/queue.c
+        server/main.c
+        server/types.c
+        server/server.c
+        server/db.c
+        server/cache.c
+        server/memory.c
+        server/parser.c
+        server/resolver.c
+        server/handlers/opcode_query.c
+        server/handlers/qtype_a.c
+        server/dispatcher.c
+        server/queue.c
         third_party/sqlite3/sqlite3.c
 )
 
