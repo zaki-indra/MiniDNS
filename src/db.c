@@ -4,8 +4,9 @@
 #include "types.h"
 
 #include <stdio.h>
+#include <string.h>
 
-static sqlite3* db = nullptr;
+static sqlite3*      db         = nullptr;
 static sqlite3_stmt* stmt_query = nullptr;
 
 bool db_init(const char* db_path)
@@ -16,11 +17,13 @@ bool db_init(const char* db_path)
     }
 
     // Enable WAL mode for concurrent read/writes
-    sqlite3_exec(db, "PRAGMA journal_mode=WAL;", nullptr, NULL, nullptr);
+    sqlite3_exec(db, "PRAGMA journal_mode=WAL;", nullptr, nullptr, nullptr);
 
-    const char* sql = "CREATE TABLE IF NOT EXISTS records (domain TEXT PRIMARY "
-                      "KEY, ipv4 INTEGER);";
-    if (sqlite3_exec(db, sql, nullptr, NULL, nullptr) != SQLITE_OK) {
+    const char* sql = "CREATE TABLE IF NOT EXISTS records ("
+                      "domain TEXT, "
+                      "ipv4 INTEGER"
+                      ");";
+    if (sqlite3_exec(db, sql, nullptr, nullptr, nullptr) != SQLITE_OK) {
         fprintf(stderr, "Failed to create table: %s\n", sqlite3_errmsg(db));
         return false;
     }
@@ -48,7 +51,7 @@ bool db_serve_init(const char* db_path)
 bool db_list(void)
 {
     sqlite3_stmt* stmt;
-    const char* sql = "SELECT domain, ipv4 FROM records;";
+    const char*   sql = "SELECT rowid, domain, ipv4 FROM records;";
     if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) != SQLITE_OK) {
         fprintf(stderr, "Failed to prepare statement: %s\n",
                 sqlite3_errmsg(db));
@@ -60,10 +63,11 @@ bool db_list(void)
     IPv4Address ip;
 
     while (sqlite3_step(stmt) == SQLITE_ROW) {
-        const unsigned char* domain = sqlite3_column_text(stmt, 0);
-        ip.words = sqlite3_column_int(stmt, 1);
-        printf("  %s -> %hhu.%hhu.%hhu.%hhu\n", (const char*)domain, ip.octets[0],
-               ip.octets[1], ip.octets[2], ip.octets[3]);
+        const long           id     = (long)sqlite3_column_int64(stmt, 0);
+        const unsigned char* domain = sqlite3_column_text(stmt, 1);
+        ip.words                    = sqlite3_column_int(stmt, 2);
+        printf("  %ld: %s -> %hhu.%hhu.%hhu.%hhu\n", id, (const char*)domain,
+               ip.octets[0], ip.octets[1], ip.octets[2], ip.octets[3]);
     }
     sqlite3_finalize(stmt);
     return true;
@@ -72,8 +76,7 @@ bool db_list(void)
 bool db_add(const char* domain, const IPv4Address* ipv4_out)
 {
     sqlite3_stmt* stmt;
-    const char* sql = "INSERT INTO records (domain, ipv4) VALUES (?, ?) "
-                      "ON CONFLICT(domain) DO UPDATE SET ipv4=excluded.ipv4;";
+    const char*   sql = "INSERT INTO records (domain, ipv4) VALUES (?, ?);";
     if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) != SQLITE_OK)
         return false;
 
@@ -88,7 +91,7 @@ bool db_add(const char* domain, const IPv4Address* ipv4_out)
 bool db_delete(const char* domain)
 {
     sqlite3_stmt* stmt;
-    const char* sql = "DELETE FROM records WHERE domain = ?;";
+    const char*   sql = "DELETE FROM records WHERE domain = ?;";
     if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) != SQLITE_OK)
         return false;
 
@@ -101,27 +104,38 @@ bool db_delete(const char* domain)
 bool db_clear(void)
 {
     const char* sql = "DELETE FROM records;";
-    return sqlite3_exec(db, sql, nullptr, NULL, nullptr) == SQLITE_OK;
+    return sqlite3_exec(db, sql, nullptr, nullptr, nullptr) == SQLITE_OK;
 }
 
-bool db_query(const char* domain, IPv4Address* ipv4_out)
+int db_query(const char* domain, IPv4Address** ips_out, Arena* arena)
 {
-    if (!stmt_query)
-        return false;
+    if (!stmt_query) {
+        perror("Statement not prepared");
+        return -1;
+    }
 
     sqlite3_bind_text(stmt_query, 1, domain, -1, SQLITE_STATIC);
-    bool found = false;
 
-    if (sqlite3_step(stmt_query) == SQLITE_ROW) {
-        int text = sqlite3_column_int(stmt_query, 0);
-        if (text) {
-            ipv4_out->words = sqlite3_column_int(stmt_query, 0);
-            found = true;
-        }
+    IPv4Address ip_list[64];
+    int         ips = 0;
+
+    while (sqlite3_step(stmt_query) == SQLITE_ROW && ips < 64) {
+        ip_list[ips++].words = sqlite3_column_int(stmt_query, 0);
     }
 
     sqlite3_reset(stmt_query);
-    return found;
+
+    if (ips == 0) {
+        *ips_out = nullptr;
+        return 0;
+    }
+
+    *ips_out = (IPv4Address*)arena_alloc(arena, sizeof(IPv4Address) * ips);
+    if (!*ips_out)
+        return -1;
+
+    memcpy(*ips_out, ip_list, sizeof(IPv4Address) * ips);
+    return ips;
 }
 
 void db_close(void)

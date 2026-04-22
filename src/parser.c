@@ -177,7 +177,7 @@ size_t dns_format_response(const DnsMessage* dns, uint8_t* out_buf,
     const char* name  = dns->questions[0].qname;
     const char* start = name;
     const char* dot   = strchr(start, '.');
-    while (dot != NULL) {
+    while (dot != nullptr) {
         size_t len = dot - start;
         if (offset < max_len)
             out_buf[offset++] = (uint8_t)len;

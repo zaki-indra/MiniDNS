@@ -30,7 +30,7 @@ typedef int socklen_t;
 static PacketQueue queue;
 
 /* -------------------------------------------------------------------------
- * Processing hook — replace this with your real logic.
+ * Processing hook
  * Operates on the worker's private stack copy: no shared state.
  * Modify pkt->data and pkt->len in-place to form the response.
  * ---------------------------------------------------------------------- */
@@ -78,7 +78,7 @@ static int worker_fn(void* arg)
     WorkerCtx* ctx = arg;
 
     /*
-     * arena and local is reused every iteration — no per-request allocation.
+     * arena and local are reused every iteration — no per-request allocation.
      */
     alignas(ALIGNMENT) uint8_t processing_buffer[ARENA_SIZE];
     Arena                      arena;
@@ -164,15 +164,13 @@ void server_start(int port)
              */
             queue_shutdown(&queue);
             for (int j = 0; j < i; j++) {
-                thrd_join(workers[j], NULL);
+                thrd_join(workers[j], nullptr);
             }
             queue_destroy(&queue);
             closesocket(sockfd);
             return;
         }
     }
-
-    printf("Server listening on port %d...\n", port);
 
     Packet pkt;
 

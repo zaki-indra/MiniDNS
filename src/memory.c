@@ -16,7 +16,7 @@ void* arena_alloc(Arena* arena, size_t size)
     size_t aligned_size = ALIGN_UP(size, ALIGNMENT);
 
     if (arena->offset + aligned_size > arena->size) {
-        return NULL; // OOM
+        return nullptr; // OOM
     }
 
     void* ptr = arena->buffer + arena->offset;
