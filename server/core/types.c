@@ -55,49 +55,49 @@ rcode_t flags_get_rcode(uint16_t flags)
 void flags_set_qr(uint16_t* flags, qr_t qr)
 {
     int mask = 0x8000;
-    *flags = (*flags & ~mask) | ((uint16_t)qr << 15);
+    *flags   = (*flags & ~mask) | ((uint16_t)qr << 15);
 }
 
 void flags_set_opcode(uint16_t* flags, opcode_t opcode)
 {
     int mask = 0x7800;
-    *flags = (*flags & ~mask) | ((uint16_t)opcode << 11);
+    *flags   = (*flags & ~mask) | ((uint16_t)opcode << 11);
 }
 
 void flags_set_aa(uint16_t* flags, aa_t aa)
 {
     int mask = 0x400;
-    *flags = (*flags & ~mask) | ((uint16_t)aa << 10);
+    *flags   = (*flags & ~mask) | ((uint16_t)aa << 10);
 }
 
 void flags_set_tc(uint16_t* flags, tc_t tc)
 {
     int mask = 0x200;
-    *flags = (*flags & ~mask) | ((uint16_t)tc << 9);
+    *flags   = (*flags & ~mask) | ((uint16_t)tc << 9);
 }
 
 void flags_set_rd(uint16_t* flags, rd_t rd)
 {
     int mask = 0x100;
-    *flags = (*flags & ~mask) | ((uint16_t)rd << 8);
+    *flags   = (*flags & ~mask) | ((uint16_t)rd << 8);
 }
 
 void flags_set_ra(uint16_t* flags, ra_t ra)
 {
     int mask = 0x80;
-    *flags = (*flags & ~mask) | ((uint16_t)ra << 7);
+    *flags   = (*flags & ~mask) | ((uint16_t)ra << 7);
 }
 
 void flags_set_z(uint16_t* flags)
 {
     int mask = 0x70;
-    *flags = (*flags & ~mask) | ((uint16_t)0 << 5);
+    *flags   = (*flags & ~mask) | ((uint16_t)0 << 5);
 }
 
 void flags_set_rcode(uint16_t* flags, rcode_t rcode)
 {
     int mask = 0xF;
-    *flags = (*flags & ~mask) | (uint16_t)rcode;
+    *flags   = (*flags & ~mask) | (uint16_t)rcode;
 }
 
 qtype_t get_qtype(uint16_t qtype)

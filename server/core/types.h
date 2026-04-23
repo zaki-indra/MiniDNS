@@ -3,13 +3,6 @@
 #include <stddef.h>
 #include <stdint.h>
 
-typedef enum {
-    OK          = 0,
-    OK_RECURSE  = 1,
-    ERR_NO_ECHO = 2,
-    ERR_ECHO    = 3,
-} rc_t;
-
 typedef union IPv4Address {
     uint8_t  octets[4];
     uint16_t hwords[2];

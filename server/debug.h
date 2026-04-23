@@ -1,5 +1,5 @@
 #pragma once
 
-#include "types.h"
+#include "core/types.h"
 
-void print_dns(const DnsMessage *dns);
+void print_dns(const DnsMessage* dns);

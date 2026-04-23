@@ -1,6 +1,6 @@
 #include "dispatcher.h"
 
-#include "handlers/opcode_query.h"
+#include "handler/opcode_query.h"
 
 #include <stdio.h>
 
@@ -22,4 +22,9 @@ void dispatcher_handle(DnsMessage* msg, Arena* arena)
         flags_set_rcode(&msg->flags, RCODE_NOTIMP);
         break;
     }
+}
+
+disp_rc_t dispatcher_handle_2(DnsMessage* msg, Arena* arena)
+{
+    opcode_t opcode = flags_get_opcode(msg->flags);
 }

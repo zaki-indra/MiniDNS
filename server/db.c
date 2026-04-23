@@ -1,7 +1,6 @@
 #include "db.h"
 
 #include "sqlite3.h"
-#include "types.h"
 
 #include <stdio.h>
 #include <string.h>

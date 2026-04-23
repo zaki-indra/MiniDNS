@@ -1,7 +1,7 @@
 #include "resolver.h"
 
-#include "cache.h"
-#include "db.h"
+#include "../cache.h"
+#include "../db.h"
 
 #include <stdio.h>
 #include <string.h>

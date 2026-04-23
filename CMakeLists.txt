@@ -12,18 +12,18 @@ include_directories(include third_party/sqlite3)
 
 set(SOURCES
     server/main.c
-    server/types.c
     server/debug.c
     server/server.c
     server/db.c
     server/cache.c
-    server/memory.c
-    server/parser.c
-    server/resolver.c
-    server/handlers/opcode_query.c
-    server/handlers/qtype_a.c
     server/dispatcher.c
+    server/parser.c
+    server/memory.c
     server/queue.c
+    server/core/types.c
+    server/handler/opcode_query.c
+    server/handler/qtype_a.c
+    server/resolver/resolver.c
     third_party/sqlite3/sqlite3.c
 )
 

@@ -9,7 +9,7 @@
 
 #include "db.h"
 #include "server.h"
-#include "types.h"
+#include "core/types.h"
 
 #include <errno.h>
 #include <limits.h>

@@ -1,7 +1,5 @@
 #include "cache.h"
 
-#include "types.h"
-
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
