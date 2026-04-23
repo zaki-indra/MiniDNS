@@ -65,6 +65,8 @@ typedef struct {
     cnd_t  not_full;  /* producer waits here when queue is full */
 } PacketQueue;
 
+struct ServerContext;
+
 /*
  * Context passed to each worker thread at creation.
  * Lives on the stack of server_start() for the full server lifetime.
@@ -73,6 +75,7 @@ typedef struct {
     PacketQueue* queue;
     int          sockfd;
     int          worker_id;
+    struct ServerContext* sctx;
 } WorkerCtx;
 
 /* Lifecycle */

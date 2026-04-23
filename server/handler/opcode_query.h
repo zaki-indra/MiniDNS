@@ -4,6 +4,4 @@
 #include "../memory.h"
 #include "handler.h"
 
-void handle_opcode_query(DnsMessage* msg, Arena* arena);
-
-hdl_rc_t handle_opcode_query_2(DnsMessage* msg, Arena* arena);
+void handle_opcode_query(ServerContext* ctx, DnsMessage* msg, Arena* arena);

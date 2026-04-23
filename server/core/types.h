@@ -2,6 +2,7 @@
 
 #include <stddef.h>
 #include <stdint.h>
+#include "../memory.h"
 
 typedef union IPv4Address {
     uint8_t  octets[4];
@@ -129,3 +130,15 @@ void flags_set_rcode(uint16_t* flags, rcode_t rcode);
 
 qtype_t  get_qtype(uint16_t qtype);
 qclass_t get_qclass(uint16_t qclass);
+
+typedef enum {
+    ACTION_SEND_REPLY = 0,
+    ACTION_DROP = 1,
+    ACTION_ERROR = 2,
+} server_action_t;
+
+typedef struct ServerContext {
+    int (*resolve_a_records)(const char* domain, IPv4Address** ips_out, size_t* count_out, Arena* arena);
+} ServerContext;
+
+void dns_prepare_response(DnsMessage* msg);

@@ -6,6 +6,7 @@
 #include "memory.h"
 #include "parser.h"
 #include "queue.h"
+#include "resolver/resolver.h"
 
 #include <stdalign.h>
 #include <stdio.h>
@@ -35,57 +36,33 @@ static PacketQueue queue;
  * Operates on the worker's private stack copy: no shared state.
  * Modify pkt->data and pkt->len in-place to form the response.
  * ---------------------------------------------------------------------- */
-static int process_packet(Packet* pkt, Arena* arena)
+static server_action_t process_packet(struct ServerContext* ctx, Packet* pkt, Arena* arena)
 {
     DnsMessage dns;
-    rc_t       rc;
+    parse_rc_t rc;
+
     rc = dns_parse_header(pkt->data, pkt->len, &dns);
-    switch (rc) {
-    case OK:
-        if (dns_parse_body(pkt->data, pkt->len, &dns, arena) == OK) {
-            print_dns(&dns);
-            dispatcher_handle(&dns, arena);
-            pkt->len = dns_format_response(&dns, pkt->data, BUFFER_SIZE);
-            return OK;
-        } else {
-            printf("Failed to parse body\n");
-            return ERR_ECHO;
-        }
-
-    case ERR_NO_ECHO:
-        break;
-
-    case ERR_ECHO:
-        dns_format_response(&dns, pkt->data, DNS_HEADER_SIZE);
-        break;
+    if (rc != PARSE_OK) {
+        if (rc == PARSE_ERR_UNEXPECTED_EOF) return ACTION_DROP;
+        server_action_t err_act = dispatcher_handle_error(&dns, rc);
+        pkt->len = dns_format_response(&dns, pkt->data, BUFFER_SIZE);
+        return err_act;
     }
-    return rc;
-}
 
-static int process_packet_2(Packet* pkt, Arena* arena)
-{
-    DnsMessage dns;
-    rc_t       rc;
-    rc = dns_parse_header(pkt->data, pkt->len, &dns);
-    switch (rc)
-    {
-    case ERR_NO_ECHO:
-        return 1;
-    case ERR_ECHO:
-        return 0;
-    }
     rc = dns_parse_body(pkt->data, pkt->len, &dns, arena);
-    switch (rc)
-    {
-    case ERR_NO_ECHO:
-        return 1;
-    case ERR_ECHO:
-        return 0;
+    if (rc != PARSE_OK) {
+        if (rc == PARSE_ERR_UNEXPECTED_EOF) return ACTION_DROP;
+        server_action_t err_act = dispatcher_handle_error(&dns, rc);
+        pkt->len = dns_format_response(&dns, pkt->data, BUFFER_SIZE);
+        return err_act;
     }
     print_dns(&dns);
-    dispatcher_handle(&dns, arena);
-    pkt->len = dns_format_response(&dns, pkt->data, BUFFER_SIZE);
-    return 0;
+
+    server_action_t act = dispatcher_handle(ctx, &dns, arena);
+    if (act == ACTION_SEND_REPLY) {
+        pkt->len = dns_format_response(&dns, pkt->data, BUFFER_SIZE);
+    }
+    return act;
 }
 
 /* -------------------------------------------------------------------------
@@ -110,19 +87,21 @@ static int worker_fn(void* arg)
     Packet local;
 
     while (queue_pop(ctx->queue, &local)) {
-        int rc = process_packet_2(&local, &arena);
+        server_action_t act = process_packet(ctx->sctx, &local, &arena);
 
-        // If rc in (OK, ERR_ECHO)
-        if (rc > 0) {
-            continue;
+        switch (act) {
+        case ACTION_SEND_REPLY: {
+            long sent = sendto(ctx->sockfd, (char*)local.data, local.len, 0,
+                               (const struct sockaddr*)&local.client_addr, local.addr_len);
+            if (sent < 0) {
+                perror("sendto");
+            }
+            break;
         }
-
-        long sent =
-            sendto(ctx->sockfd, (char*)local.data, local.len, 0,
-                   (const struct sockaddr*)&local.client_addr, local.addr_len);
-
-        if (sent < 0) {
-            perror("sendto");
+        case ACTION_DROP:
+        case ACTION_ERROR:
+        default:
+            break;
         }
         arena_reset(&arena);
     }
@@ -170,6 +149,10 @@ void server_start(int port)
 
     cache_init();
 
+    ServerContext app_ctx = {
+        .resolve_a_records = resolve_a_records,
+    };
+
     thrd_t    workers[WORKER_COUNT];
     WorkerCtx ctxs[WORKER_COUNT];
 
@@ -178,6 +161,7 @@ void server_start(int port)
             .queue     = &queue,
             .sockfd    = sockfd,
             .worker_id = i,
+            .sctx      = &app_ctx,
         };
         if (thrd_create(&workers[i], worker_fn, &ctxs[i]) != thrd_success) {
             fprintf(stderr, "thrd_create failed for worker %d\n", i);

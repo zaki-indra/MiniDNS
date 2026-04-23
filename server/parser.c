@@ -3,11 +3,11 @@
 #include <stdio.h>
 #include <string.h>
 
-rc_t dns_parse_header(const uint8_t* in_buf, size_t in_len, DnsMessage* out_dns)
+parse_rc_t dns_parse_header(const uint8_t* in_buf, size_t in_len, DnsMessage* out_dns)
 {
     // 1. Buffer bounds check
     if (in_len < 12) {
-        return ERR_NO_ECHO;
+        return PARSE_ERR_UNEXPECTED_EOF;
     }
 
     // 2. Parse directly into the struct to DRY up the code
@@ -18,51 +18,10 @@ rc_t dns_parse_header(const uint8_t* in_buf, size_t in_len, DnsMessage* out_dns)
     out_dns->nscount = (in_buf[8] << 8) | in_buf[9];
     out_dns->arcount = (in_buf[10] << 8) | in_buf[11];
 
-    // 3. Drop responses immediately (we are a server handling queries)
-    if (flags_get_qr(out_dns->flags) == QR_RESPONSE) {
-        return ERR_NO_ECHO;
-    }
-
-    uint16_t opcode = flags_get_opcode(out_dns->flags);
-
-    // 4. Handle completely unknown opcodes
-    if (opcode == OPCODE_UNKNOWN) {
-        flags_set_qr(&out_dns->flags, QR_RESPONSE);
-        flags_set_rcode(&out_dns->flags, RCODE_NOTIMP);
-        return ERR_ECHO;
-    }
-
-    // 5. Handle known, but non-standard queries
-    if (opcode != OPCODE_QUERY) {
-        // return OK_RECURSE; // NO recursive ability for now
-    }
-
-    // 6. Handle Standard Queries
-    if (opcode == OPCODE_QUERY && out_dns->qdcount == 1) {
-        flags_set_qr(&out_dns->flags, QR_RESPONSE);
-        flags_set_ra(&out_dns->flags, RA_NO);
-        flags_set_z(&out_dns->flags);
-        return OK;
-    }
-
-    // 7. Format Error Fallback (qdcount is 0 or > 1)
-    flags_set_qr(&out_dns->flags, QR_RESPONSE);
-    flags_set_opcode(&out_dns->flags, OPCODE_QUERY);
-    flags_set_tc(&out_dns->flags, TC_NO);
-    flags_set_ra(&out_dns->flags, RA_NO);
-    flags_set_z(&out_dns->flags);
-    flags_set_rcode(&out_dns->flags, RCODE_FORMERR);
-
-    // Safely strip payload counts so the error echo is just the header
-    out_dns->qdcount = 0;
-    out_dns->ancount = 0;
-    out_dns->nscount = 0;
-    out_dns->arcount = 0;
-
-    return ERR_ECHO;
+    return PARSE_OK;
 }
 
-rc_t dns_parse_body(const uint8_t* in_buf, size_t in_len, DnsMessage* out_dns,
+parse_rc_t dns_parse_body(const uint8_t* in_buf, size_t in_len, DnsMessage* out_dns,
                     Arena* arena)
 {
     // TODO: Implement robust parsing logic here!
@@ -84,8 +43,7 @@ rc_t dns_parse_body(const uint8_t* in_buf, size_t in_len, DnsMessage* out_dns,
                 goto outer;
             }
             if (offset + len > in_len) {
-                flags_set_rcode(&out_dns->flags, RCODE_FORMERR);
-                return ERR_ECHO;
+                return PARSE_ERR_FORMERR;
             }
 
             if (domain_len > 0 && domain_len < sizeof(domain_out) - 1) {
@@ -106,7 +64,7 @@ rc_t dns_parse_body(const uint8_t* in_buf, size_t in_len, DnsMessage* out_dns,
                  sizeof(out_dns->questions[q].qname), "%s", domain_out);
 
         if (offset + 4 > in_len)
-            return ERR_NO_ECHO;
+            return PARSE_ERR_UNEXPECTED_EOF;
         uint16_t qtype  = (in_buf[offset] << 8) | in_buf[offset + 1];
         uint16_t qclass = (in_buf[offset + 2] << 8) | in_buf[offset + 3];
 
@@ -114,8 +72,7 @@ rc_t dns_parse_body(const uint8_t* in_buf, size_t in_len, DnsMessage* out_dns,
         qclass_t qclass_e = get_qclass(qclass);
 
         if (qtype_e == QTYPE_ANY || qclass_e == QCLASS_ANY) {
-            flags_set_rcode(&out_dns->flags, RCODE_NOTIMP);
-            return ERR_ECHO;
+            return PARSE_ERR_NOTIMP;
         }
 
         out_dns->questions[q].qtype  = qtype;
@@ -130,26 +87,13 @@ rc_t dns_parse_body(const uint8_t* in_buf, size_t in_len, DnsMessage* out_dns,
     uint16_t arcount   = out_dns->arcount;
     size_t   remaining = in_len - offset;
     if (remaining <= 0) {
-        return OK;
+        return PARSE_OK;
     }
     out_dns->additional_data =
         (uint8_t*)arena_alloc(arena, remaining * sizeof(uint8_t));
     memcpy(out_dns->additional_data, in_buf + offset, remaining);
     out_dns->additional_len = remaining;
-    return OK;
-}
-
-rc_t dns_parse_request(const uint8_t* in_buf, size_t in_len,
-                       DnsMessage* out_dns, Arena* arena)
-{
-    /**
-     * Header checking
-     */
-
-    if (in_len < 12) {
-        return ERR_NO_ECHO;
-    }
-    return OK;
+    return PARSE_OK;
 }
 
 size_t dns_format_response(const DnsMessage* dns, uint8_t* out_buf,

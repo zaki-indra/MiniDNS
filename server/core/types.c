@@ -119,3 +119,12 @@ qclass_t get_qclass(uint16_t qclass)
         return QCLASS_ANY;
     }
 }
+
+void dns_prepare_response(DnsMessage* msg)
+{
+    flags_set_qr(&msg->flags, QR_RESPONSE);
+    flags_set_aa(&msg->flags, AA_NO);
+    flags_set_tc(&msg->flags, TC_NO);
+    flags_set_ra(&msg->flags, RA_NO);
+}
+
