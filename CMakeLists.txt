@@ -11,20 +11,20 @@ endif ()
 include_directories(include third_party/sqlite3)
 
 set(SOURCES
-        server/main.c
-        server/types.c
-        server/debug.c
-        server/server.c
-        server/db.c
-        server/cache.c
-        server/memory.c
-        server/parser.c
-        server/resolver.c
-        server/handlers/opcode_query.c
-        server/handlers/qtype_a.c
-        server/dispatcher.c
-        server/queue.c
-        third_party/sqlite3/sqlite3.c
+    server/main.c
+    server/types.c
+    server/debug.c
+    server/server.c
+    server/db.c
+    server/cache.c
+    server/memory.c
+    server/parser.c
+    server/resolver.c
+    server/handlers/opcode_query.c
+    server/handlers/qtype_a.c
+    server/dispatcher.c
+    server/queue.c
+    third_party/sqlite3/sqlite3.c
 )
 
 add_executable(minidns ${SOURCES})
@@ -34,7 +34,7 @@ if (CMAKE_BUILD_TYPE STREQUAL "Debug")
 endif ()
 
 target_compile_options(minidns PRIVATE
-        $<$<CONFIG:Debug>:-Wall -Wextra -g>
+    $<$<CONFIG:Debug>:-Wall -g>
 )
 
 find_package(Threads REQUIRED)
