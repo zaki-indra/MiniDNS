@@ -56,18 +56,22 @@ void print_dns(const DnsMessage* dns)
     if (dns->arcount > 0) {
         printf("  Additional:\n");
     }
-    // for (int i = 0; i < dns->arcount; i++) {
-    //     printf("    - %d:\n", i);
-    //     printf("      NAME: %s\n", dns->additional[i].name);
-    //     printf("      TYPE: %hu\n", dns->additional[i].type);
-    //     printf("      CLASS: %hu\n", dns->additional[i].class);
-    //     printf("      TTL: %u\n", dns->additional[i].ttl);
-    //     printf("      RDLENGTH: %hu\n", dns->additional[i].rdlength);
-    //     printf("      RDATA: ");
-    //     for (int j = 0; j < dns->additional[i].rdlength; j++) {
-    //         printf("%02x ", dns->additional[i].rdata[j]);
-    //     }
-    //     printf("\n");
-    // }
+    for (int i = 0; i < dns->arcount; i++) {
+        printf("    - %d:\n", i);
+        printf("      NAME: ");
+        for (int j = 0; j < strlen(dns->additional[i].name); j++) {
+            printf("%02x", dns->additional[i].name[j]);
+        }
+        printf("\n");
+        printf("      TYPE: %hu\n", dns->additional[i].type);
+        printf("      CLASS: %hu\n", dns->additional[i].class);
+        printf("      TTL: %u\n", dns->additional[i].ttl);
+        printf("      RDLENGTH: %hu\n", dns->additional[i].rdlength);
+        printf("      RDATA: ");
+        for (int j = 0; j < dns->additional[i].rdlength; j++) {
+            printf("%02x ", dns->additional[i].rdata[j]);
+        }
+        printf("\n");
+    }
 #endif
 }

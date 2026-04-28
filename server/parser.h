@@ -13,8 +13,8 @@ typedef enum {
 parse_rc_t dns_parse_header(const uint8_t* in_buf, size_t in_len,
                             DnsMessage* out_dns);
 
-parse_rc_t dns_parse_body(const uint8_t* in_buf, size_t in_len, DnsMessage* out_dns,
-                          Arena* arena);
+parse_rc_t dns_parse_body(const uint8_t* in_buf, size_t in_len,
+                          DnsMessage* out_dns, Arena* arena);
 
 // Formats a DnsMessage object into a raw binary buffer for transmission.
 // Returns the size of the formatted packet, or 0 on failure.
